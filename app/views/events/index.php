@@ -16,6 +16,11 @@ require_once VIEWS_PATH . '/layout/header.php';
 
 <?= renderFlash('events') ?>
 
+<?php if (!empty($mapEvents)): ?>
+<div id="events-index-map" class="event-map border mb-4"
+     style="height:300px;border-radius:0.375rem"></div>
+<?php endif; ?>
+
 <?php if (empty($events)): ?>
 <div class="card text-center py-5">
     <div class="card-body">
@@ -128,6 +133,50 @@ require_once VIEWS_PATH . '/layout/header.php';
     </ul>
 </nav>
 <?php endif; ?>
+<?php endif; ?>
+
+<?php if (!empty($mapEvents)): ?>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+<script>
+(function () {
+    const events = <?= json_encode(array_map(static function (array $ev): array {
+        return [
+            'id'    => (int)$ev['id'],
+            'title' => $ev['title'],
+            'url'   => url('events/' . (int)$ev['id']),
+            'lat'   => (float)$ev['latitude'],
+            'lng'   => (float)$ev['longitude'],
+        ];
+    }, $mapEvents), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+
+    const map = L.map('events-index-map');
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    const bounds = [];
+    events.forEach(function (ev) {
+        const latlng = [ev.lat, ev.lng];
+        bounds.push(latlng);
+        const safeTitle = document.createElement('div');
+        safeTitle.textContent = ev.title;
+        const popup = '<strong>' + safeTitle.innerHTML + '</strong><br>'
+            + '<a href="' + ev.url + '">Ver evento</a>';
+        L.marker(latlng).addTo(map).bindPopup(popup);
+    });
+
+    if (bounds.length === 1) {
+        map.setView(bounds[0], 12);
+    } else {
+        map.fitBounds(bounds, { padding: [30, 30] });
+    }
+})();
+</script>
 <?php endif; ?>
 
 <?php require_once VIEWS_PATH . '/layout/footer.php'; ?>

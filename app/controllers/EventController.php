@@ -27,6 +27,8 @@ class EventController
             $pag['offset']
         );
 
+        $mapEvents = $this->eventModel->getAllWithCoordinates();
+
         require_once VIEWS_PATH . '/events/index.php';
     }
 
@@ -64,6 +66,13 @@ class EventController
         $description = trim($_POST['description'] ?? '');
         $eventDateRaw = $_POST['event_date'] ?? '';
         $location    = trim($_POST['location'] ?? '');
+        $latitude    = $this->parseCoordinate($_POST['latitude'] ?? null, true);
+        $longitude   = $this->parseCoordinate($_POST['longitude'] ?? null, false);
+
+        if ($latitude === false || $longitude === false) {
+            flash('events', 'Las coordenadas del mapa no son válidas.', 'danger');
+            redirect('/events/create');
+        }
 
         if (strlen($title) < 3 || strlen($title) > 200) {
             flash('events', 'El título debe tener entre 3 y 200 caracteres.', 'danger');
@@ -106,6 +115,8 @@ class EventController
             $description !== '' ? $description : null,
             $eventDate,
             $location !== '' ? $location : null,
+            $latitude,
+            $longitude,
             $image
         );
 
@@ -190,6 +201,37 @@ class EventController
 
         flash('events', 'Evento eliminado.');
         redirect('/events');
+    }
+
+    /**
+     * @return float|null Coordenada válida, null si vacía, false si inválida.
+     */
+    private function parseCoordinate(mixed $value, bool $isLatitude): float|null|false
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $raw = trim((string)$value);
+        if ($raw === '') {
+            return null;
+        }
+
+        if (!is_numeric($raw)) {
+            return false;
+        }
+
+        $coord = (float)$raw;
+
+        if ($isLatitude) {
+            if ($coord < -90 || $coord > 90) {
+                return false;
+            }
+        } elseif ($coord < -180 || $coord > 180) {
+            return false;
+        }
+
+        return $coord;
     }
 
     private function parseEventDate(string $raw): ?string

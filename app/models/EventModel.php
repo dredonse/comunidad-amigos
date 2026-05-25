@@ -16,7 +16,7 @@ class EventModel
     public function getAll(int $userId, int $limit = 9, int $offset = 0): array
     {
         $sql = 'SELECT e.id, e.creator_id, e.title, e.description, e.event_date,
-                       e.location, e.image, e.created_at,
+                       e.location, e.latitude, e.longitude, e.image, e.created_at,
                        u.username AS creator_username, u.avatar AS creator_avatar,
                        (SELECT COUNT(*) FROM event_attendees ea
                         WHERE ea.event_id = e.id AND ea.status = \'going\') AS going_count,
@@ -39,6 +39,17 @@ class EventModel
         return $events;
     }
 
+    /** Eventos con coordenadas para el mapa del listado (sin paginación). */
+    public function getAllWithCoordinates(): array
+    {
+        $sql = 'SELECT e.id, e.title, e.latitude, e.longitude
+                FROM events e
+                WHERE e.latitude IS NOT NULL AND e.longitude IS NOT NULL
+                ORDER BY e.event_date ASC';
+
+        return $this->db->query($sql)->fetchAll();
+    }
+
     public function countAll(): int
     {
         return (int)$this->db->query('SELECT COUNT(*) FROM events')->fetchColumn();
@@ -47,7 +58,7 @@ class EventModel
     public function findById(int $id, int $userId = 0): ?array
     {
         $sql = 'SELECT e.id, e.creator_id, e.title, e.description, e.event_date,
-                       e.location, e.image, e.created_at,
+                       e.location, e.latitude, e.longitude, e.image, e.created_at,
                        u.username AS creator_username, u.avatar AS creator_avatar,
                        (SELECT COUNT(*) FROM event_attendees ea
                         WHERE ea.event_id = e.id AND ea.status = \'going\') AS going_count,
@@ -86,16 +97,28 @@ class EventModel
         ?string $description,
         string $eventDate,
         ?string $location,
+        ?float $latitude,
+        ?float $longitude,
         ?string $image
     ): int {
         $this->db->beginTransaction();
 
         try {
             $stmt = $this->db->prepare(
-                'INSERT INTO events (creator_id, title, description, event_date, location, image)
-                 VALUES (?, ?, ?, ?, ?, ?)'
+                'INSERT INTO events (creator_id, title, description, event_date, location,
+                                    latitude, longitude, image)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
             );
-            $stmt->execute([$creatorId, $title, $description, $eventDate, $location, $image]);
+            $stmt->execute([
+                $creatorId,
+                $title,
+                $description,
+                $eventDate,
+                $location,
+                $latitude,
+                $longitude,
+                $image,
+            ]);
             $eventId = (int)$this->db->lastInsertId();
 
             $att = $this->db->prepare(

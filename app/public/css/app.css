@@ -117,6 +117,9 @@ body {
 .msg-time    { font-size: .7rem; opacity: .7; }
 
 /* ── Eventos ── */
+.event-map { z-index: 0; }
+.leaflet-container { font-family: inherit; }
+
 .event-card { overflow: hidden; }
 .event-card .card-body { position: relative; }
 .event-card .event-date {

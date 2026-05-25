@@ -428,6 +428,62 @@ app/public/js/app.js           (modificado: AJAX grupos)
 app/views/layout/header.php    (modificado: enlace Grupos)
 ```
 
+### Sesión 10 — Mapas en eventos (Leaflet.js)
+
+**Fecha:** 25/05/2025  
+**Estado:** ✅ Completado
+
+**Objetivos:**
+Integrar mapas interactivos en el módulo de eventos usando
+Leaflet.js y la API gratuita de OpenStreetMap/Nominatim.
+
+**Trabajo realizado:**
+
+**Base de datos**
+- Añadidas columnas latitude y longitude a la tabla events.
+- docker/mysql/maps.sql para migrar contenedores existentes.
+- docker/mysql/init.sql actualizado para nuevas instalaciones.
+
+**EventModel**
+- create / findById / getAll: incluyen latitude y longitude.
+- getAllWithCoordinates: eventos con coordenadas para el 
+  mapa del listado.
+
+**EventController**
+- store(): valida y recoge latitude y longitude del POST.
+- index(): pasa $mapEvents a la vista.
+
+**Vistas**
+- events/create.php: mapa interactivo 350px centrado en 
+  España. Clic coloca marcador, rellena campos ocultos y 
+  geocodifica con Nominatim (debounce 500ms).
+- events/show.php: mapa de solo lectura 300px si el evento 
+  tiene coordenadas, con popup del título.
+- events/index.php: mapa superior con todos los eventos 
+  geolocalizados y fitBounds. Oculto si no hay ninguno.
+
+**Otros cambios**
+- app.css: estilos para .event-map y .leaflet-container.
+- Leaflet.js cargado solo en las vistas que lo usan (CDN 1.9.4).
+
+**Flujo verificado**
+- Crear evento con clic en mapa rellena dirección y coordenadas.
+- Mapa visible en detalle del evento.
+- Mapa del listado muestra todos los eventos geolocalizados.
+- Eventos sin coordenadas muestran solo texto de location.
+
+**Archivos creados / modificados:**
+```
+docker/mysql/maps.sql
+docker/mysql/init.sql          (modificado: columnas lat/lon)
+app/models/EventModel.php      (modificado)
+app/controllers/EventController.php  (modificado)
+app/views/events/create.php    (modificado: mapa interactivo)
+app/views/events/show.php      (modificado: mapa solo lectura)
+app/views/events/index.php     (modificado: mapa listado)
+app/public/css/app.css         (modificado: estilos mapa)
+```
+
 ## 🗺️ Roadmap
 
 | Módulo | Estado |
@@ -457,8 +513,8 @@ Mejoras pensadas para integrarse en el producto con alcance definido y uso en en
 | Orden | Módulo | Estado | Descripción |
 |-------|--------|--------|-------------|
 | 1 | **Grupos** | ✅ Hecho | Comunidades con feed, miembros y publicaciones (Sesión 9) |
-| 2 | **Mapas** | ← **Siguiente** | Integración en eventos con [Leaflet.js](https://leafletjs.com/) (ubicación en mapa) |
-| 3 | **Notificaciones push** | ⏳ Pendiente | PWA con notificaciones en el navegador |
+| 2 | **Mapas** | ✅ Completado | Integración en eventos con [Leaflet.js](https://leafletjs.com/) y Nominatim (Sesión 10) |
+| 3 | **Notificaciones push** | ← **Siguiente** | PWA con notificaciones en el navegador |
 | 4 | **WebSockets** | ⏳ Pendiente | Mensajería en tiempo real con [Ratchet](https://github.com/ratchetphp/Ratchet) (PHP) |
 
 ### Fase 3 — Exploración técnica en local

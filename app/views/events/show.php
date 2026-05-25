@@ -23,6 +23,16 @@ require_once VIEWS_PATH . '/layout/header.php';
         <p class="text-muted mb-3"><?= nl2br(e($event['description'])) ?></p>
         <?php endif; ?>
 
+        <?php
+        $hasMap = isset($event['latitude'], $event['longitude'])
+            && $event['latitude'] !== null
+            && $event['longitude'] !== null;
+        ?>
+        <?php if ($hasMap): ?>
+        <div id="event-show-map" class="event-map border mb-4"
+             style="height:300px;border-radius:0.375rem"></div>
+        <?php endif; ?>
+
         <ul class="list-unstyled mb-4">
             <li class="mb-2">
                 <i class="bi bi-calendar3 me-2 text-primary"></i>
@@ -170,5 +180,27 @@ require_once VIEWS_PATH . '/layout/header.php';
         <i class="bi bi-arrow-left me-1"></i> Volver a eventos
     </a>
 </p>
+
+<?php if ($hasMap): ?>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+<script>
+(function () {
+    const lat = <?= json_encode((float)$event['latitude']) ?>;
+    const lng = <?= json_encode((float)$event['longitude']) ?>;
+    const title = <?= json_encode($event['title'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+
+    const map = L.map('event-show-map').setView([lat, lng], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+    L.marker([lat, lng]).addTo(map).bindPopup(title);
+})();
+</script>
+<?php endif; ?>
 
 <?php require_once VIEWS_PATH . '/layout/footer.php'; ?>

@@ -65,6 +65,8 @@ CREATE TABLE IF NOT EXISTS events (
     description TEXT,
     event_date  DATETIME NOT NULL,
     location    VARCHAR(255),
+    latitude    DECIMAL(10, 8) DEFAULT NULL,
+    longitude   DECIMAL(11, 8) DEFAULT NULL,
     image       VARCHAR(255) DEFAULT NULL,
     created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE,
