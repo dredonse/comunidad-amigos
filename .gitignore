@@ -1,0 +1,6 @@
+.env
+docker/mysql/data/
+uploads/
+*.log
+.DS_Store
+Thumbs.db

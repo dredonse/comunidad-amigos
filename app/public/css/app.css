@@ -1,0 +1,144 @@
+/* ============================================
+   Comunidad de Amigos - Estilos principales
+   ============================================ */
+
+:root {
+    --color-primary: #0d6efd;
+    --color-bg: #f0f2f5;
+    --radius: 12px;
+    --shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+body {
+    background-color: var(--color-bg);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ── Cards ── */
+.card {
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: none;
+}
+
+/* ── Posts ── */
+.post-card {
+    margin-bottom: 1rem;
+    transition: box-shadow .2s;
+}
+.post-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,.12);
+}
+.post-card .post-image {
+    width: 100%;
+    max-height: 500px;
+    object-fit: cover;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.post-actions .btn {
+    font-size: .9rem;
+    color: #6c757d;
+    transition: color .15s;
+}
+.post-actions .btn:hover { color: var(--color-primary); }
+.post-actions .btn.liked  { color: #dc3545; }
+
+/* ── Avatar ── */
+.avatar {
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #dee2e6;
+}
+.cursor-pointer { cursor: pointer; }
+
+/* ── Navbar ── */
+.navbar-brand {
+    font-size: 1.3rem;
+    letter-spacing: -.3px;
+}
+
+/* ── Sidebar ── */
+.sidebar-card {
+    position: sticky;
+    top: 80px;
+}
+
+/* ── Feed textarea ── */
+#postContent {
+    resize: none;
+    border-radius: 12px;
+    border: 1.5px solid #dee2e6;
+    transition: border-color .2s;
+}
+#postContent:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(13,110,253,.15);
+}
+
+/* ── Comentarios ── */
+.comment-list { font-size: .9rem; }
+.comment-item {
+    border-bottom: 1px solid #f0f0f0;
+    padding: .5rem 0;
+}
+.comment-item:last-child { border-bottom: none; }
+
+/* ── Notificaciones badge ── */
+.notif-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    font-size: .65rem;
+}
+
+/* ── Notificaciones ── */
+.notification-unread {
+    border-left: 3px solid var(--color-primary);
+}
+
+/* ── Mensajes ── */
+.messages-sidebar-list .list-group-item.active a {
+    color: inherit;
+}
+.messages-area {
+    min-height: 320px;
+    max-height: 55vh;
+}
+.msg-bubble {
+    max-width: 70%;
+    border-radius: 18px;
+    padding: .5rem 1rem;
+    margin-bottom: .25rem;
+}
+.msg-mine    { background: var(--color-primary); color: #fff; margin-left: auto; border-bottom-right-radius: 4px; }
+.msg-other   { background: #fff; color: #212529; border-bottom-left-radius: 4px; box-shadow: var(--shadow); }
+.msg-time    { font-size: .7rem; opacity: .7; }
+
+/* ── Eventos ── */
+.event-card { overflow: hidden; }
+.event-card .card-body { position: relative; }
+.event-card .event-date {
+    background: var(--color-primary);
+    color: #fff;
+    border-radius: 8px;
+    padding: .5rem;
+    text-align: center;
+    min-width: 52px;
+}
+.event-card .event-date .day   { font-size: 1.5rem; font-weight: 700; line-height: 1; }
+.event-card .event-date .month { font-size: .7rem;  text-transform: uppercase; }
+
+/* ── Animaciones ── */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeIn .25s ease-out; }
+
+/* ── Responsive ── */
+@media (max-width: 576px) {
+    .post-card .card-body { padding: .75rem; }
+    .msg-bubble { max-width: 90%; }
+}
