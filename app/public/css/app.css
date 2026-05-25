@@ -115,6 +115,11 @@ body {
 .msg-mine    { background: var(--color-primary); color: #fff; margin-left: auto; border-bottom-right-radius: 4px; }
 .msg-other   { background: #fff; color: #212529; border-bottom-left-radius: 4px; box-shadow: var(--shadow); }
 .msg-time    { font-size: .7rem; opacity: .7; }
+.msg-sending { display: inline-block; animation: msg-spin .8s linear infinite; }
+@keyframes msg-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
 
 /* ── Eventos ── */
 .event-map { z-index: 0; }

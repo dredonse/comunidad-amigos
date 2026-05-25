@@ -183,6 +183,16 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
     UNIQUE KEY unique_endpoint (user_id, auth)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Sesiones WebSocket (Ratchet)
+CREATE TABLE IF NOT EXISTS ws_sessions (
+    id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id    INT UNSIGNED NOT NULL,
+    conn_id    VARCHAR(100) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Usuario admin por defecto (password: Admin1234!)
 INSERT INTO users (username, email, password, role) VALUES (
     'admin',

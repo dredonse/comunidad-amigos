@@ -1,5 +1,6 @@
 .env
 app/vendor/
+docker/websocket/vendor/
 docker/mysql/data/
 uploads/
 *.log

@@ -107,6 +107,14 @@ require_once VIEWS_PATH . '/layout/header.php';
 </div>
 
 <script>
+    const USER_ID     = <?= (int)$currentId ?>;
+    const USERNAME    = <?= json_encode($currentUser['username'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+    const AVATAR      = <?= json_encode($currentUser['avatar'] ?? 'default.png', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+    const RECEIVER_ID = <?= (int)$otherUser['id'] ?>;
+    const WS_URL      = 'ws://localhost:8090';
+</script>
+<script src="<?= BASE_URL ?>/js/chat.js"></script>
+<script>
 (function() {
     const area = document.querySelector('.messages-area');
     if (area) area.scrollTop = area.scrollHeight;

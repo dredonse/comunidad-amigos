@@ -46,6 +46,23 @@ services:
       timeout: 5s
       retries: 5
 
+  websocket:
+    build: ./docker/websocket
+    container_name: comunidad_ws
+    restart: always
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./docker/websocket:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_HOST=db
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: comunidad_pma

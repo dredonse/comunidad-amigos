@@ -97,6 +97,7 @@ document.addEventListener('submit', async function(e) {
 document.addEventListener('submit', async function(e) {
     const form = e.target.closest('.message-form');
     if (!form) return;
+    if (form.dataset.wsConnected === '1') return;
 
     const input = form.querySelector('input[name="content"]');
     const content = input?.value.trim();

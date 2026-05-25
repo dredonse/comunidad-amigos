@@ -574,6 +574,72 @@ app/composer.json
 .gitignore                     (modificado: app/vendor/)
 ```
 
+### Sesión 12 — WebSockets con Ratchet
+
+**Fecha:** 25/05/2025  
+**Estado:** ✅ Completado
+
+**Objetivos:**
+Implementar mensajería en tiempo real con WebSockets usando
+Ratchet (PHP) en un contenedor Docker independiente.
+
+**Trabajo realizado:**
+
+**Infraestructura**
+- Nuevo contenedor comunidad_ws (PHP CLI + PDO + sockets).
+- docker/websocket/Dockerfile, composer.json, server.php,
+  ChatServer.php.
+- docker-compose.yml: servicio websocket en puerto 8090.
+- docker/mysql/websocket.sql: tabla ws_sessions.
+
+**ChatServer (Ratchet)**
+- onOpen: registra conexión en SplObjectStorage.
+- onMessage type auth: asocia user_id a la conexión,
+  guarda en ws_sessions y $userConnections.
+- onMessage type message: INSERT en messages, confirma
+  al emisor con tick, reenvía al receptor si está conectado.
+- onClose: limpia $clients, $userConnections y ws_sessions.
+
+**Cliente**
+- chat.js: conexión WS, auth al abrir, envío de mensajes,
+  burbujas con spinner que cambia a tick al confirmar,
+  mensajes entrantes sin recargar, reconexión automática 
+  a los 3 segundos si se pierde la conexión.
+- conversation.php: variables JS globales USER_ID, USERNAME,
+  AVATAR, RECEIVER_ID, WS_URL.
+- app.js: fallback a AJAX si WebSocket no conecta.
+- app.css: animación spinner de envío.
+
+**Incidencias resueltas**
+- Fatal error Class ChatServer not found: server.php no 
+  tenía require de ChatServer.php. Corregido añadiendo
+  require __DIR__ . '/ChatServer.php' al inicio.
+- Deprecation notices de PHP 8.3 por propiedades dinámicas
+  en Ratchet: no impiden el funcionamiento en local.
+
+**Flujo verificado**
+- Dos usuarios en la misma conversación en navegadores 
+  distintos.
+- Mensaje del admin aparece al instante en el segundo 
+  usuario sin recargar.
+- Servidor arranca correctamente mostrando:
+  Ratchet WS Server running on port 8090.
+
+**Archivos creados / modificados:**
+```
+docker/websocket/Dockerfile
+docker/websocket/composer.json
+docker/websocket/server.php
+docker/websocket/ChatServer.php
+docker/mysql/websocket.sql
+docker/mysql/init.sql          (modificado: tabla ws_sessions)
+docker-compose.yml             (modificado: servicio websocket)
+app/public/js/chat.js
+app/views/messages/conversation.php  (modificado: vars JS)
+app/public/js/app.js           (modificado: fallback WS)
+app/public/css/app.css         (modificado: spinner)
+```
+
 ## 🗺️ Roadmap
 
 | Módulo | Estado |
@@ -591,12 +657,14 @@ app/composer.json
 | Sistema de grupos | ✅ Completado |
 
 > El roadmap principal del proyecto (Fase 1) está **completamente terminado**: todos los módulos en ✅ Completado.
+>
+> La **Fase 2** (grupos, mapas, push PWA y WebSockets) también está **completamente terminada**.
 
 ## 🔮 Mejoras futuras
 
-Tras cerrar la Fase 1 (MVC + Docker + módulos core), el desarrollo continuaría en dos fases con objetivos distintos.
+Tras cerrar la Fase 1 (MVC + Docker + módulos core) y la Fase 2 (mejoras PWA y tiempo real), el desarrollo continuaría en exploración técnica avanzada.
 
-### Fase 2 — Próximas mejoras
+### Fase 2 — Mejoras integradas
 
 Mejoras pensadas para integrarse en el producto con alcance definido y uso en entorno de desarrollo o despliegue controlado.
 
@@ -605,7 +673,7 @@ Mejoras pensadas para integrarse en el producto con alcance definido y uso en en
 | 1 | **Grupos** | ✅ Hecho | Comunidades con feed, miembros y publicaciones (Sesión 9) |
 | 2 | **Mapas** | ✅ Completado | Integración en eventos con [Leaflet.js](https://leafletjs.com/) y Nominatim (Sesión 10) |
 | 3 | **Notificaciones push** | ✅ Completado | PWA con Push API, Service Worker y web-push (Sesión 11) |
-| 4 | **WebSockets** | ← **Siguiente** | Mensajería en tiempo real con [Ratchet](https://github.com/ratchetphp/Ratchet) (PHP) |
+| 4 | **WebSockets** | ✅ Completado | Mensajería en tiempo real con [Ratchet](https://github.com/ratchetphp/Ratchet) (Sesión 12) |
 
 ### Fase 3 — Exploración técnica en local
 
