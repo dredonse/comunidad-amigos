@@ -2,24 +2,42 @@
 
 declare(strict_types=1);
 
+// Temporal: suprimir notices/warnings hasta confirmar ext-gmp tras rebuild
+error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING);
+
 // Cargar variables de entorno desde .env si no están definidas
 function loadEnv(string $path): void
 {
-    if (!file_exists($path)) return;
+    if (!file_exists($path)) {
+        return;
+    }
 
     $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
-        if (str_starts_with(trim($line), '#')) continue;
-        [$key, $value] = array_map('trim', explode('=', $line, 2));
-        if (!getenv($key)) {
-            putenv("{$key}={$value}");
-            $_ENV[$key] = $value;
+        if (str_starts_with(trim($line), '#')) {
+            continue;
         }
+        if (!str_contains($line, '=')) {
+            continue;
+        }
+        [$key, $value] = array_map('trim', explode('=', $line, 2));
+        if ($key === '' || getenv($key) !== false) {
+            continue;
+        }
+        putenv("{$key}={$value}");
+        $_ENV[$key] = $value;
     }
 }
 
 // Rutas base
 define('BASE_PATH', dirname(__DIR__));
+
+loadEnv(dirname(BASE_PATH) . '/.env');
+loadEnv(BASE_PATH . '/.env');
+
+if (file_exists(BASE_PATH . '/vendor/autoload.php')) {
+    require_once BASE_PATH . '/vendor/autoload.php';
+}
 define('PUBLIC_PATH', BASE_PATH . '/public');
 define('UPLOADS_PATH', PUBLIC_PATH . '/uploads');
 define('VIEWS_PATH', BASE_PATH . '/views');

@@ -62,6 +62,13 @@ class FriendController
             (int)$user['id']
         );
 
+        PushHelper::sendNotification(
+            [$receiverId],
+            'Nueva solicitud de amistad',
+            '@' . $user['username'] . ' quiere ser tu amigo',
+            '/friends'
+        );
+
         flash('friends', 'Solicitud de amistad enviada.');
         redirect('/friends');
     }
@@ -88,6 +95,13 @@ class FriendController
             'friend_request',
             $user['username'] . ' aceptó tu solicitud de amistad',
             (int)$user['id']
+        );
+
+        PushHelper::sendNotification(
+            [$senderId],
+            'Solicitud aceptada',
+            '@' . $user['username'] . ' aceptó tu solicitud de amistad',
+            '/friends'
         );
 
         flash('friends', '¡Amistad aceptada!');

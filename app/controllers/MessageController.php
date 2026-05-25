@@ -105,6 +105,13 @@ class MessageController
             $senderId
         );
 
+        PushHelper::sendNotification(
+            [$receiverId],
+            'Nuevo mensaje',
+            '@' . $user['username'] . ' te ha escrito',
+            '/messages/' . $senderId
+        );
+
         if ($this->isAjax()) {
             $row = $this->messageModel->findById($messageId);
             $this->json([

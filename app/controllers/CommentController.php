@@ -45,6 +45,13 @@ class CommentController
                 $user['username'] . ' comentó tu publicación',
                 $postId
             );
+
+            PushHelper::sendNotification(
+                [$ownerId],
+                'Nuevo comentario',
+                '@' . $user['username'] . ' comentó tu publicación',
+                '/feed'
+            );
         }
 
         $this->json([

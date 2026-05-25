@@ -41,6 +41,13 @@ class LikeController
                     $user['username'] . ' le gustó tu publicación',
                     $postId
                 );
+
+                PushHelper::sendNotification(
+                    [$ownerId],
+                    'Nuevo like',
+                    '@' . $user['username'] . ' dio like a tu publicación',
+                    '/feed'
+                );
             }
         }
 

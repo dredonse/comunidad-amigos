@@ -484,6 +484,96 @@ app/views/events/index.php     (modificado: mapa listado)
 app/public/css/app.css         (modificado: estilos mapa)
 ```
 
+### Sesión 11 — Notificaciones Push PWA
+
+**Fecha:** 25/05/2025  
+**Estado:** ✅ Completado
+
+**Objetivos:**
+Implementar notificaciones push nativas del navegador usando
+la Push API, Service Workers y la librería web-push de PHP.
+
+**Trabajo realizado:**
+
+**Base de datos**
+- Tabla push_subscriptions para almacenar endpoints y keys.
+- docker/mysql/push.sql para migrar contenedores existentes.
+
+**PushModel**
+- save / delete / getByUser / getAllSubscriptions /
+  getSubscriptionsByUserIds.
+
+**PushController**
+- subscribe / unsubscribe: reciben JSON, gestionan 
+  suscripciones por usuario.
+
+**PushHelper**
+- sendNotification(userIds, title, body, url): envía push
+  con minishlink/web-push, limpia suscripciones caducadas.
+- ob_start/ob_end_clean para evitar conflictos de headers
+  con output de librerías externas.
+
+**Integración**
+- Notificaciones push en: solicitudes de amistad, 
+  aceptación, comentarios, likes, mensajes y unión a grupos.
+
+**PWA**
+- manifest.json con nombre, iconos y theme_color.
+- sw.js: install (caché), fetch (network-first), push 
+  (showNotification), notificationclick (openWindow).
+- iconos icon-192.png / icon-512.png (SVG fondo azul con C).
+- push.js: registro SW, suscripción VAPID, botón en navbar.
+
+**Infraestructura**
+- Dockerfile: extensión GMP + Composer + web-push v9.
+- docker-compose.yml: variables VAPID_*.
+- .env.example: placeholders VAPID actualizados.
+- app/config/app.php: carga vendor/autoload.php.
+
+**Incidencias resueltas**
+- Parse error en Windows al generar claves VAPID por 
+  comillas en PowerShell. Resuelto creando script PHP 
+  en app/ y ejecutándolo con docker exec.
+- Notice de GMP imprimía output antes del redirect 
+  rompiendo headers. Resuelto con ob_start/ob_end_clean
+  en PushHelper y rebuild con GMP activo.
+
+**Flujo verificado**
+- Activar notificaciones push desde el menú de usuario.
+- Mensaje del segundo usuario genera notificación nativa 
+  en el navegador del admin.
+- Push funciona con la pestaña en segundo plano.
+- Actualización del contenido en tiempo real pendiente 
+  de WebSockets (siguiente módulo).
+
+**Archivos creados / modificados:**
+```
+app/models/PushModel.php
+app/controllers/PushController.php
+app/helpers/PushHelper.php
+app/public/sw.js
+app/public/manifest.json
+app/public/img/icon-192.png
+app/public/img/icon-512.png
+app/public/js/push.js
+docker/mysql/push.sql
+docker/mysql/init.sql          (modificado)
+docker/php/Dockerfile          (modificado: GMP + Composer)
+docker-compose.yml             (modificado: VAPID vars)
+app/config/app.php             (modificado: autoload + error_reporting)
+app/helpers/PushHelper.php     (modificado: ob_start)
+app/views/layout/header.php    (modificado: manifest + push.js)
+app/views/layout/footer.php    (modificado: VAPID + push.js)
+app/public/index.php           (modificado: rutas push)
+app/controllers/FriendController.php   (modificado)
+app/controllers/CommentController.php (modificado)
+app/controllers/LikeController.php   (modificado)
+app/controllers/MessageController.php (modificado)
+app/controllers/GroupController.php  (modificado)
+app/composer.json
+.gitignore                     (modificado: app/vendor/)
+```
+
 ## 🗺️ Roadmap
 
 | Módulo | Estado |
@@ -514,8 +604,8 @@ Mejoras pensadas para integrarse en el producto con alcance definido y uso en en
 |-------|--------|--------|-------------|
 | 1 | **Grupos** | ✅ Hecho | Comunidades con feed, miembros y publicaciones (Sesión 9) |
 | 2 | **Mapas** | ✅ Completado | Integración en eventos con [Leaflet.js](https://leafletjs.com/) y Nominatim (Sesión 10) |
-| 3 | **Notificaciones push** | ← **Siguiente** | PWA con notificaciones en el navegador |
-| 4 | **WebSockets** | ⏳ Pendiente | Mensajería en tiempo real con [Ratchet](https://github.com/ratchetphp/Ratchet) (PHP) |
+| 3 | **Notificaciones push** | ✅ Completado | PWA con Push API, Service Worker y web-push (Sesión 11) |
+| 4 | **WebSockets** | ← **Siguiente** | Mensajería en tiempo real con [Ratchet](https://github.com/ratchetphp/Ratchet) (PHP) |
 
 ### Fase 3 — Exploración técnica en local
 

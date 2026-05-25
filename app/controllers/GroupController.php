@@ -151,6 +151,13 @@ class GroupController
                 $user['username'] . ' se unió al grupo «' . $group['name'] . '»',
                 $groupId
             );
+
+            PushHelper::sendNotification(
+                [(int)$group['creator_id']],
+                'Nuevo miembro en el grupo',
+                '@' . $user['username'] . ' se unió al grupo «' . $group['name'] . '»',
+                '/groups/' . $groupId
+            );
         }
 
         flash('groups', 'Te has unido al grupo.');

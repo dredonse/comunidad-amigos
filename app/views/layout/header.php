@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0d6efd">
+    <link rel="manifest" href="<?= url('manifest.json') ?>">
     <title><?= e($pageTitle ?? 'Comunidad') ?> · Comunidad</title>
+    <?php if (isLoggedIn()): ?>
+    <meta name="csrf-token" content="<?= e(csrfToken()) ?>">
+    <?php endif; ?>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/app.css">
@@ -72,6 +77,11 @@
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" href="<?= url('profile') ?>">
                             <i class="bi bi-person me-1"></i> Mi perfil</a></li>
+                        <li>
+                            <button type="button" class="dropdown-item" id="push-toggle-btn">
+                                <i class="bi bi-bell me-1"></i> Activar notificaciones push
+                            </button>
+                        </li>
                         <?php if (($_SESSION['user_role'] ?? '') === 'admin'): ?>
                         <li><a class="dropdown-item" href="<?= url('admin') ?>">
                             <i class="bi bi-shield-check me-1"></i> Administración</a></li>

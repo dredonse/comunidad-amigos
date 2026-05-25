@@ -67,6 +67,10 @@ $routes = [
     ['GET',  '/notifications',      'NotificationController', 'index'],
     ['POST', '/notifications/read', 'NotificationController', 'markRead'],
 
+    // Web Push (PWA)
+    ['POST', '/push/subscribe',   'PushController', 'subscribe'],
+    ['POST', '/push/unsubscribe', 'PushController', 'unsubscribe'],
+
     // Admin
     ['GET',  '/admin',               'AdminController', 'index'],
     ['GET',  '/admin/users',         'AdminController', 'users'],

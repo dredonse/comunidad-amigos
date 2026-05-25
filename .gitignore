@@ -1,4 +1,5 @@
 .env
+app/vendor/
 docker/mysql/data/
 uploads/
 *.log

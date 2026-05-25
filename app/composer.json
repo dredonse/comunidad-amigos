@@ -1,0 +1,11 @@
+{
+    "name": "comunidad/amigos",
+    "description": "Red social privada - Comunidad de Amigos",
+    "require": {
+        "php": ">=8.3",
+        "minishlink/web-push": "^9.0"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
