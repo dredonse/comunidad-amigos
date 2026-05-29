@@ -640,6 +640,73 @@ app/public/js/app.js           (modificado: fallback WS)
 app/public/css/app.css         (modificado: spinner)
 ```
 
+### Sesión 13 — Mejoras y correcciones generales
+
+**Fecha:** 29/05/2026  
+**Estado:** ✅ Completado
+
+**Objetivos:**
+Pulir el comportamiento de la app, mejorar el panel de 
+administración y corregir bugs detectados en pruebas.
+
+**Trabajo realizado:**
+
+**Panel de administración**
+- Dashboard rediseñado: 5 tarjetas sin redundancias
+  (Usuarios, Publicaciones, Eventos, Mensajes, Grupos).
+  Cada tarjeta con dato principal y dato secundario.
+  Tarjetas clicables excepto Mensajes (privacidad).
+- Nuevas secciones de gestión: /admin/posts, 
+  /admin/events, /admin/groups con paginación y 
+  acciones de eliminar.
+- Grupos: botón toggle público/privado desde el admin.
+- Crear usuario desde /admin/users con modal Bootstrap.
+  Solo el admin puede crear cuentas (red privada).
+- Mensajes: solo contador, sin acceso al contenido.
+
+**Correcciones de bugs**
+- Grupos privados visibles para usuarios no miembros.
+  Corregido en GroupModel::getAll() con subquery EXISTS.
+  Acceso directo por URL también bloqueado en 
+  GroupController::show().
+- Like y comentario en posts propios: deshabilitado en
+  UI (_post.php) y validado en backend (LikeController,
+  CommentController).
+- Bucle infinito de avatar 404: corregido con 
+  this.onerror=null en todos los tags img.
+- CSRF token no disponible para AJAX: corregido con
+  meta tag csrf-token en el header.
+- app.js: const form duplicado causaba SyntaxError.
+  Corregido renombrando variables a groupForm, postForm,
+  msgForm. Error persistía por caché del navegador,
+  resuelto con Ctrl+Shift+R.
+
+**Mensajería**
+- Botón "Nuevo mensaje" en /messages con modal para
+  seleccionar amigo y buscador en tiempo real.
+
+**Archivos creados / modificados:**
+```
+app/views/admin/index.php      (rediseño dashboard)
+app/views/admin/posts.php      (nueva vista)
+app/views/admin/events.php     (nueva vista)
+app/views/admin/groups.php     (nueva vista)
+app/views/admin/users.php      (modal crear usuario)
+app/controllers/AdminController.php  (nuevos métodos)
+app/models/AdminModel.php      (nuevos métodos)
+app/public/index.php           (nuevas rutas admin)
+app/models/GroupModel.php      (fix grupos privados)
+app/controllers/GroupController.php  (fix acceso privado)
+app/views/posts/_post.php      (like/comentario propios)
+app/controllers/LikeController.php   (validación backend)
+app/controllers/CommentController.php (validación backend)
+app/views/messages/index.php   (modal nuevo mensaje)
+app/controllers/MessageController.php (carga amigos)
+app/helpers/functions.php      (fix avatarUrl)
+app/views/layout/header.php    (meta csrf-token)
+app/public/js/app.js           (fix const form duplicado)
+```
+
 ## 🗺️ Roadmap
 
 | Módulo | Estado |
@@ -655,6 +722,7 @@ app/public/css/app.css         (modificado: spinner)
 | Notificaciones | ✅ Completado |
 | Panel de administración | ✅ Completado |
 | Sistema de grupos | ✅ Completado |
+| Correcciones y mejoras | ✅ Completado |
 
 > El roadmap principal del proyecto (Fase 1) está **completamente terminado**: todos los módulos en ✅ Completado.
 >
@@ -674,6 +742,17 @@ Mejoras pensadas para integrarse en el producto con alcance definido y uso en en
 | 2 | **Mapas** | ✅ Completado | Integración en eventos con [Leaflet.js](https://leafletjs.com/) y Nominatim (Sesión 10) |
 | 3 | **Notificaciones push** | ✅ Completado | PWA con Push API, Service Worker y web-push (Sesión 11) |
 | 4 | **WebSockets** | ✅ Completado | Mensajería en tiempo real con [Ratchet](https://github.com/ratchetphp/Ratchet) (Sesión 12) |
+| 5 | **Correcciones y mejoras** | ✅ Completado | Panel admin ampliado, bugs de privacidad y UX (Sesión 13) |
+
+### Correcciones y mejoras
+
+Pulido transversal tras cerrar Fase 2: administración, mensajería y corrección de bugs en producción local.
+
+| Área | Estado | Descripción |
+|------|--------|-------------|
+| **Panel de administración** | ✅ Completado | Dashboard, gestión de posts/eventos/grupos, alta de usuarios (Sesión 13) |
+| **Privacidad y UX** | ✅ Completado | Grupos privados, likes/comentarios propios, avatares, CSRF, app.js (Sesión 13) |
+| **Mensajería** | ✅ Completado | Modal «Nuevo mensaje» con buscador de amigos (Sesión 13) |
 
 ### Fase 3 — Exploración técnica en local
 
