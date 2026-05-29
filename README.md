@@ -765,3 +765,67 @@ Pulido transversal tras cerrar Fase 2: administración, mensajería y correcció
 | **App móvil** | PWA instalable (complementa notificaciones push de Fase 2) |
 | **APIs externas** | Integraciones según necesidad (mapas, OAuth, etc.) |
 
+## Consideraciones futuras de UX móvil
+
+### Situación actual
+
+La app está diseñada con Bootstrap pensando principalmente en escritorio. En móvil es funcional gracias al diseño responsive pero la experiencia no está optimizada para pantallas táctiles.
+
+### Opciones valoradas
+
+**Opción A — Mejorar el diseño responsive actual**
+
+Adaptar el CSS para que en móvil parezca más una app:
+
+- Navbar inferior en móvil (como Instagram) en vez de superior
+- Cards más grandes y táctiles
+- Botones adaptados para dedos
+- Fuentes optimizadas para móvil
+
+Resultado: experiencia decente sin cambios estructurales.  
+Esfuerzo: medio. Coste: 0€.
+
+**Opción B — PWA mobile-first (recomendada)**
+
+Rediseñar las vistas pensando en móvil primero. La PWA instalada en el móvil ofrece:
+
+- Apertura sin barra de navegador
+- Icono propio en la pantalla de inicio
+- Notificaciones push nativas
+- Gestos táctiles naturales
+
+El objetivo de la PWA es suplantar la experiencia de una app nativa. Twitter, Starbucks y Pinterest tienen PWAs que la mayoría de usuarios no distingue de una app nativa.
+
+Resultado: muy buena experiencia si está bien diseñada.  
+Esfuerzo: alto (rediseño completo mobile-first).  
+Coste: 0€.
+
+**Opción C — App nativa móvil**
+
+Crear una app real para iOS y Android que consuma una API REST del backend PHP actual.
+
+Stack necesario:
+
+- Frontend: React Native o Flutter
+- Backend: API REST nueva en PHP
+- Base de datos: la misma MariaDB actual
+
+Resultado: experiencia nativa perfecta.  
+Esfuerzo: muy alto, es básicamente otro proyecto completo.  
+Coste: 99€/año Apple Developer + 25$ Google Play.
+
+### Recomendación
+
+Para una comunidad privada de amigos la Opción B (PWA mobile-first) es más que suficiente y es exactamente para lo que fue inventada. La diferencia entre una PWA bien diseñada y una app nativa es mínima para el usuario final en tareas cotidianas.
+
+### Camino propuesto cuando se aborde
+
+1. Desplegar en Raspberry Pi o VPS con HTTPS
+2. Rediseñar las vistas con enfoque mobile-first
+3. Probar la PWA instalada en móviles reales
+4. Evaluar si la experiencia es suficiente
+5. Solo si no lo es, valorar app nativa
+
+### Prerequisito
+
+Antes de abordar cualquiera de estas opciones es necesario tener la app desplegada en un servidor con HTTPS (Raspberry Pi, VPS o Railway) ya que las PWA y las notificaciones push requieren HTTPS para funcionar fuera de localhost.
