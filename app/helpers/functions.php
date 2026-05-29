@@ -136,6 +136,11 @@ function timeAgo(string $datetime): string
 
 function avatarUrl(string $avatar = 'default.png'): string
 {
+    $avatar = trim($avatar);
+    if ($avatar === '' || $avatar === 'default.png') {
+        return BASE_URL . '/img/default.png';
+    }
+
     return BASE_URL . '/uploads/avatars/' . e($avatar);
 }
 

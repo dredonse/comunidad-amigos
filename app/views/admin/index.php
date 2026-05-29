@@ -15,72 +15,73 @@ require_once VIEWS_PATH . '/layout/header.php';
 
 <?= renderFlash('admin') ?>
 
-<div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3 mb-4">
+<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-5 g-3 mb-4">
     <div class="col">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center">
-                <i class="bi bi-people text-primary fs-3"></i>
-                <div class="display-6 fw-bold mt-2"><?= (int)$stats['total_users'] ?></div>
-                <small class="text-muted">Total usuarios</small>
-                <div class="small text-success mt-1">
-                    <?= (int)$stats['active_users'] ?> activos
+        <a href="<?= url('admin/users') ?>" class="text-decoration-none text-dark admin-stat-link">
+            <div class="card h-100 border-0 shadow-sm admin-stat-card">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-people-fill text-primary fs-2"></i>
+                    <div class="display-6 fw-bold mt-2"><?= (int)$stats['total_users'] ?></div>
+                    <div class="text-muted small">Usuarios</div>
+                    <div class="text-success small mt-1">
+                        +<?= (int)$stats['new_users_week'] ?> esta semana
+                    </div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center">
-                <i class="bi bi-newspaper text-primary fs-3"></i>
-                <div class="display-6 fw-bold mt-2"><?= (int)$stats['total_posts'] ?></div>
-                <small class="text-muted">Publicaciones</small>
+        <a href="<?= url('admin/posts') ?>" class="text-decoration-none text-dark admin-stat-link">
+            <div class="card h-100 border-0 shadow-sm admin-stat-card">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-file-post text-primary fs-2"></i>
+                    <div class="display-6 fw-bold mt-2"><?= (int)$stats['total_posts'] ?></div>
+                    <div class="text-muted small">Publicaciones</div>
+                    <div class="text-muted small mt-1">
+                        +<?= (int)$stats['new_posts_week'] ?> esta semana
+                    </div>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center">
-                <i class="bi bi-chat-dots text-primary fs-3"></i>
-                <div class="display-6 fw-bold mt-2"><?= (int)$stats['total_comments'] ?></div>
-                <small class="text-muted">Comentarios</small>
+        <a href="<?= url('admin/events') ?>" class="text-decoration-none text-dark admin-stat-link">
+            <div class="card h-100 border-0 shadow-sm admin-stat-card">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-calendar-event text-primary fs-2"></i>
+                    <div class="display-6 fw-bold mt-2"><?= (int)$stats['total_events'] ?></div>
+                    <div class="text-muted small">Eventos</div>
+                    <div class="text-muted small mt-1">
+                        <?= (int)$stats['upcoming_events'] ?> próximos
+                    </div>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col">
         <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center">
-                <i class="bi bi-calendar-event text-primary fs-3"></i>
-                <div class="display-6 fw-bold mt-2"><?= (int)$stats['total_events'] ?></div>
-                <small class="text-muted">Eventos</small>
-            </div>
-        </div>
-    </div>
-    <div class="col">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center">
-                <i class="bi bi-envelope text-primary fs-3"></i>
+            <div class="card-body text-center py-4">
+                <i class="bi bi-chat-dots text-primary fs-2"></i>
                 <div class="display-6 fw-bold mt-2"><?= (int)$stats['total_messages'] ?></div>
-                <small class="text-muted">Mensajes</small>
+                <div class="text-muted small">Mensajes</div>
+                <div class="text-muted small mt-1">mensajes enviados</div>
             </div>
         </div>
     </div>
     <div class="col">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center">
-                <i class="bi bi-person-plus text-success fs-3"></i>
-                <div class="display-6 fw-bold mt-2"><?= (int)$stats['new_users_week'] ?></div>
-                <small class="text-muted">Usuarios (7 días)</small>
+        <a href="<?= url('admin/groups') ?>" class="text-decoration-none text-dark admin-stat-link">
+            <div class="card h-100 border-0 shadow-sm admin-stat-card">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-collection text-primary fs-2"></i>
+                    <div class="display-6 fw-bold mt-2"><?= (int)$stats['total_groups'] ?></div>
+                    <div class="text-muted small">Grupos</div>
+                    <div class="text-muted small mt-1">
+                        <?= (int)$stats['public_groups'] ?> públicos ·
+                        <?= (int)$stats['private_groups'] ?> privados
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
-    <div class="col">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center">
-                <i class="bi bi-file-earmark-plus text-success fs-3"></i>
-                <div class="display-6 fw-bold mt-2"><?= (int)$stats['new_posts_week'] ?></div>
-                <small class="text-muted">Posts (7 días)</small>
-            </div>
-        </div>
+        </a>
     </div>
 </div>
 
@@ -106,7 +107,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                                 <div class="d-flex align-items-center gap-2">
                                     <img src="<?= avatarUrl($u['avatar'] ?? 'default.png') ?>"
                                          class="rounded-circle" width="32" height="32" alt=""
-                                         onerror="this.src='<?= url('img/default.svg') ?>'">
+                                         onerror="this.onerror=null; this.src='/img/default.png'">
                                     <div>
                                         <a href="<?= url('profile/' . (int)$u['id']) ?>"
                                            class="fw-semibold text-decoration-none">
@@ -159,7 +160,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                                 <div class="d-flex align-items-center gap-2">
                                     <img src="<?= avatarUrl($p['avatar'] ?? 'default.png') ?>"
                                          class="rounded-circle" width="32" height="32" alt=""
-                                         onerror="this.src='<?= url('img/default.svg') ?>'">
+                                         onerror="this.onerror=null; this.src='/img/default.png'">
                                     <span class="fw-semibold"><?= e($p['username']) ?></span>
                                 </div>
                                 <small class="text-muted"><?= e(timeAgo($p['created_at'])) ?></small>

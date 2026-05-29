@@ -15,7 +15,7 @@ $userLiked   = !empty($post['user_liked']);
             <img src="<?= avatarUrl($post['avatar'] ?? 'default.png') ?>"
                  class="avatar rounded-circle flex-shrink-0"
                  width="48" height="48" alt="<?= e($post['username']) ?>"
-                 onerror="this.src='<?= url('img/default.svg') ?>'">
+                 onerror="this.onerror=null; this.src='/img/default.png'">
 
             <div class="flex-grow-1 min-width-0">
                 <div class="d-flex justify-content-between align-items-start">
@@ -59,12 +59,21 @@ $userLiked   = !empty($post['user_liked']);
                 <?php endif; ?>
 
                 <div class="post-actions d-flex gap-2 border-top pt-2 mt-2">
+                    <?php if ($isOwner): ?>
+                    <span class="btn btn-sm text-muted pe-none">
+                        <i class="bi bi-heart"></i>
+                        <span><?= $likeCount ?></span>
+                        Me gusta
+                    </span>
+                    <?php else: ?>
                     <button type="button"
-                            class="btn btn-link btn-sm text-decoration-none btn-like <?= $userLiked ? 'liked' : '' ?>"
+                            class="btn btn-sm btn-like <?= $userLiked ? 'liked' : '' ?>"
                             data-post-id="<?= $postId ?>">
                         <i class="bi <?= $userLiked ? 'bi-heart-fill' : 'bi-heart' ?>"></i>
                         <span class="like-count"><?= $likeCount ?></span>
+                        Me gusta
                     </button>
+                    <?php endif; ?>
                     <button type="button"
                             class="btn btn-link btn-sm text-decoration-none"
                             data-bs-toggle="collapse"
@@ -73,6 +82,7 @@ $userLiked   = !empty($post['user_liked']);
                             aria-controls="comments-panel-<?= $postId ?>">
                         <i class="bi bi-chat"></i>
                         <span class="comment-count"><?= $commentCount ?></span>
+                        Comentar
                     </button>
                 </div>
 
@@ -83,7 +93,7 @@ $userLiked   = !empty($post['user_liked']);
                             <img src="<?= avatarUrl($c['avatar'] ?? 'default.png') ?>"
                                  class="rounded-circle flex-shrink-0"
                                  width="28" height="28" alt=""
-                                 onerror="this.src='<?= url('img/default.svg') ?>'">
+                                 onerror="this.onerror=null; this.src='/img/default.png'">
                             <div>
                                 <strong><?= e($c['username']) ?></strong>
                                 <span class="text-muted ms-1"><?= e($c['comment']) ?></span>
@@ -104,6 +114,7 @@ $userLiked   = !empty($post['user_liked']);
                     </p>
                     <?php endif; ?>
 
+                    <?php if (!$isOwner): ?>
                     <form class="comment-form mt-2" data-post-id="<?= $postId ?>">
                         <?= csrfField() ?>
                         <div class="input-group input-group-sm">
@@ -115,6 +126,7 @@ $userLiked   = !empty($post['user_liked']);
                             </button>
                         </div>
                     </form>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

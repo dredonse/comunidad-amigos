@@ -7,7 +7,7 @@
     <link rel="manifest" href="<?= url('manifest.json') ?>">
     <title><?= e($pageTitle ?? 'Comunidad') ?> · Comunidad</title>
     <?php if (isLoggedIn()): ?>
-    <meta name="csrf-token" content="<?= e(csrfToken()) ?>">
+    <meta name="csrf-token" content="<?= csrfToken() ?>">
     <?php endif; ?>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -71,7 +71,7 @@
                        data-bs-toggle="dropdown">
                         <img src="<?= avatarUrl($_SESSION['avatar'] ?? 'default.png') ?>"
                              class="rounded-circle" width="32" height="32" alt="Avatar"
-                             onerror="this.src='<?= url('css/../img/default.png') ?>'">
+                             onerror="this.onerror=null; this.src='/img/default.png'">
                         <span><?= e($_SESSION['username'] ?? '') ?></span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">

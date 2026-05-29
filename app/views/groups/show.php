@@ -15,7 +15,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                 <div class="d-flex gap-3 flex-wrap">
                     <img src="<?= groupAvatarUrl($group['avatar'] ?? 'default.png') ?>"
                          class="rounded-circle" width="72" height="72" alt=""
-                         onerror="this.src='<?= url('img/default.svg') ?>'">
+                         onerror="this.onerror=null; this.src='/img/default.png'">
                     <div>
                         <h1 class="h4 mb-1"><?= e($group['name']) ?></h1>
                         <?php if (!empty($group['description'])): ?>
@@ -81,7 +81,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                     <div class="d-flex align-items-start gap-3">
                         <img src="<?= avatarUrl($post['avatar'] ?? 'default.png') ?>"
                              class="avatar rounded-circle" width="48" height="48" alt=""
-                             onerror="this.src='<?= url('img/default.svg') ?>'">
+                             onerror="this.onerror=null; this.src='/img/default.png'">
                         <div class="flex-grow-1 min-width-0">
                             <div class="d-flex justify-content-between">
                                 <div>
@@ -218,7 +218,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                 <li class="list-group-item d-flex align-items-center gap-2">
                     <img src="<?= avatarUrl($m['avatar'] ?? 'default.png') ?>"
                          class="rounded-circle" width="32" height="32" alt=""
-                         onerror="this.src='<?= url('img/default.svg') ?>'">
+                         onerror="this.onerror=null; this.src='/img/default.png'">
                     <a href="<?= url('profile/' . (int)$m['user_id']) ?>"
                        class="text-decoration-none flex-grow-1">
                         <?= e($m['username']) ?>

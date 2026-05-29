@@ -72,11 +72,20 @@ $routes = [
     ['POST', '/push/unsubscribe', 'PushController', 'unsubscribe'],
 
     // Admin
-    ['GET',  '/admin',               'AdminController', 'index'],
-    ['GET',  '/admin/users',         'AdminController', 'users'],
-    ['POST', '/admin/user/toggle',   'AdminController', 'toggleUser'],
-    ['POST', '/admin/user/delete',   'AdminController', 'deleteUser'],
-    ['POST', '/admin/post/delete',   'AdminController', 'deletePost'],
+    ['GET',  '/admin',                 'AdminController', 'index'],
+    ['GET',  '/admin/users',           'AdminController', 'users'],
+    ['GET',  '/admin/posts',           'AdminController', 'posts'],
+    ['GET',  '/admin/comments',        'AdminController', 'comments'],
+    ['GET',  '/admin/events',          'AdminController', 'events'],
+    ['GET',  '/admin/groups',          'AdminController', 'groups'],
+    ['POST', '/admin/user/create',     'AdminController', 'createUser'],
+    ['POST', '/admin/user/toggle',     'AdminController', 'toggleUser'],
+    ['POST', '/admin/user/delete',     'AdminController', 'deleteUser'],
+    ['POST', '/admin/post/delete',     'AdminController', 'deletePost'],
+    ['POST', '/admin/comment/delete',  'AdminController', 'deleteComment'],
+    ['POST', '/admin/event/delete',    'AdminController', 'deleteEvent'],
+    ['POST', '/admin/group/delete',    'AdminController', 'deleteGroup'],
+    ['POST', '/admin/group/toggle-privacy', 'AdminController', 'toggleGroupPrivacy'],
 
     // AJAX - Comentarios y likes
     ['POST', '/ajax/comment',       'CommentController', 'store'],

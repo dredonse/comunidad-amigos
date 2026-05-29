@@ -21,12 +21,12 @@ require_once VIEWS_PATH . '/layout/header.php';
                      data-bs-target="#editProfile"
                      aria-expanded="false"
                      aria-controls="editProfile"
-                     onerror="this.src='<?= url('img/default.svg') ?>'">
+                     onerror="this.onerror=null; this.src='/img/default.png'">
                 <?php else: ?>
                 <img src="<?= avatarUrl($profileUser['avatar'] ?? 'default.png') ?>"
                      class="avatar rounded-circle mb-3"
                      width="120" height="120" alt="<?= e($profileUser['username']) ?>"
-                     onerror="this.src='<?= url('img/default.svg') ?>'">
+                     onerror="this.onerror=null; this.src='/img/default.png'">
                 <?php endif; ?>
 
                 <h1 class="h4 mb-1"><?= e($profileUser['username']) ?></h1>
@@ -175,7 +175,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                         <img src="<?= avatarUrl($profileUser['avatar'] ?? 'default.png') ?>"
                              class="avatar rounded-circle flex-shrink-0"
                              width="48" height="48" alt="Tu avatar"
-                             onerror="this.src='<?= url('img/default.svg') ?>'">
+                             onerror="this.onerror=null; this.src='/img/default.png'">
                         <div class="flex-grow-1">
                             <textarea name="content" class="form-control mb-2"
                                       rows="2" placeholder="¿Qué quieres compartir?"

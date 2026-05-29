@@ -23,6 +23,9 @@ class MessageController
         $conversations = $this->messageModel->getConversations($userId);
         $activeOtherId = null;
 
+        $friendModel = new FriendModel();
+        $friends     = $friendModel->getFriends($userId);
+
         require_once VIEWS_PATH . '/messages/index.php';
     }
 

@@ -16,17 +16,20 @@ class GroupController
 
     public function index(): void
     {
-        $userId = (int)currentUser()['id'];
-        $page   = max(1, (int)($_GET['page'] ?? 1));
-        $perPage = 9;
+        $user     = currentUser();
+        $userId   = (int)$user['id'];
+        $isSiteAdmin = ($user['role'] ?? '') === 'admin';
+        $page     = max(1, (int)($_GET['page'] ?? 1));
+        $perPage  = 9;
 
-        $total = $this->groupModel->countAll();
+        $total = $this->groupModel->countAll($userId, $isSiteAdmin);
         $pag   = paginate($total, $perPage, $page);
 
         $groups = $this->groupModel->getAll(
             $userId,
             $pag['perPage'],
-            $pag['offset']
+            $pag['offset'],
+            $isSiteAdmin
         );
 
         require_once VIEWS_PATH . '/groups/index.php';
@@ -94,9 +97,16 @@ class GroupController
             return;
         }
 
-        $isMember = $this->groupModel->isMember($id, $userId);
-        $isAdmin  = $this->groupModel->isAdmin($id, $userId);
-        $canViewPosts = $isMember || $group['privacy'] === 'public';
+        $isMember    = $this->groupModel->isMember($id, $userId);
+        $isAdmin     = $this->groupModel->isAdmin($id, $userId);
+        $isSiteAdmin = ($user['role'] ?? '') === 'admin';
+
+        if ($group['privacy'] === 'private' && !$isMember && !$isSiteAdmin) {
+            flash('groups', 'Este grupo es privado.', 'warning');
+            redirect('/groups');
+        }
+
+        $canViewPosts = $isMember || $group['privacy'] === 'public' || $isSiteAdmin;
 
         $members = $this->groupModel->getMembers($id, 10);
 

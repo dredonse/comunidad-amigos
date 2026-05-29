@@ -30,6 +30,10 @@ class LikeController
             $this->json(['success' => false, 'error' => 'La publicación no existe.'], 404);
         }
 
+        if ((int)$post['user_id'] === (int)$user['id']) {
+            $this->json(['success' => false, 'error' => 'No puedes dar like a tu propia publicación.'], 403);
+        }
+
         $result = $this->postModel->toggleLike($postId, (int)$user['id']);
 
         if ($result['liked']) {

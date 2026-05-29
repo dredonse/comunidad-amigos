@@ -16,7 +16,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                         <img src="<?= avatarUrl($profile['avatar'] ?? 'default.png') ?>"
                              class="avatar rounded-circle flex-shrink-0"
                              width="48" height="48" alt="Tu avatar"
-                             onerror="this.src='<?= url('img/default.svg') ?>'">
+                             onerror="this.onerror=null; this.src='/img/default.png'">
                         <div class="flex-grow-1">
                             <textarea id="postContent" name="content" class="form-control mb-2"
                                       rows="2" placeholder="¿Qué quieres compartir?"
@@ -63,7 +63,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                 <img src="<?= avatarUrl($profile['avatar'] ?? 'default.png') ?>"
                      class="avatar rounded-circle mb-2"
                      width="72" height="72" alt="<?= e($profile['username']) ?>"
-                     onerror="this.src='<?= url('img/default.svg') ?>'">
+                     onerror="this.onerror=null; this.src='/img/default.png'">
                 <h2 class="h6 mb-1"><?= e($profile['username']) ?></h2>
                 <p class="text-muted small mb-3">
                     <?= !empty($profile['bio'])

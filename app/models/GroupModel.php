@@ -13,8 +13,23 @@ class GroupModel
 
     // ── Grupos ──────────────────────────────────────────────────
 
-    public function getAll(int $userId, int $limit = 9, int $offset = 0): array
-    {
+    public function getAll(
+        int $userId,
+        int $limit = 9,
+        int $offset = 0,
+        bool $isSiteAdmin = false
+    ): array {
+        $visibilityWhere = $isSiteAdmin
+            ? ''
+            : 'WHERE g.privacy = \'public\'
+                  OR (
+                      g.privacy = \'private\'
+                      AND EXISTS (
+                          SELECT 1 FROM group_members gm
+                          WHERE gm.group_id = g.id AND gm.user_id = ?
+                      )
+                  )';
+
         $sql = 'SELECT g.id, g.name, g.description, g.avatar, g.creator_id,
                        g.privacy, g.created_at,
                        u.username AS creator_username,
@@ -26,11 +41,16 @@ class GroupModel
                        ) AS is_member
                 FROM `groups` g
                 INNER JOIN users u ON u.id = g.creator_id
+                ' . $visibilityWhere . '
                 ORDER BY g.created_at DESC
                 LIMIT ? OFFSET ?';
 
+        $params = $isSiteAdmin
+            ? [$userId, $limit, $offset]
+            : [$userId, $userId, $limit, $offset];
+
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId, $limit, $offset]);
+        $stmt->execute($params);
 
         $rows = $stmt->fetchAll();
         foreach ($rows as &$row) {
@@ -41,9 +61,26 @@ class GroupModel
         return $rows;
     }
 
-    public function countAll(): int
+    public function countAll(int $userId, bool $isSiteAdmin = false): int
     {
-        return (int)$this->db->query('SELECT COUNT(*) FROM `groups`')->fetchColumn();
+        if ($isSiteAdmin) {
+            return (int)$this->db->query('SELECT COUNT(*) FROM `groups`')->fetchColumn();
+        }
+
+        $stmt = $this->db->prepare(
+            'SELECT COUNT(*) FROM `groups` g
+             WHERE g.privacy = \'public\'
+                OR (
+                    g.privacy = \'private\'
+                    AND EXISTS (
+                        SELECT 1 FROM group_members gm
+                        WHERE gm.group_id = g.id AND gm.user_id = ?
+                    )
+                )'
+        );
+        $stmt->execute([$userId]);
+
+        return (int)$stmt->fetchColumn();
     }
 
     public function findById(int $id): ?array

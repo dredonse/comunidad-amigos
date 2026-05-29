@@ -34,7 +34,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                 <div class="d-flex gap-3 mb-2">
                     <img src="<?= groupAvatarUrl($g['avatar'] ?? 'default.png') ?>"
                          class="rounded-circle flex-shrink-0" width="56" height="56" alt=""
-                         onerror="this.src='<?= url('img/default.svg') ?>'">
+                         onerror="this.onerror=null; this.src='/img/default.png'">
                     <div class="min-width-0">
                         <h2 class="h6 mb-1">
                             <a href="<?= url('groups/' . (int)$g['id']) ?>"

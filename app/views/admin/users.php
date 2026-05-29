@@ -1,6 +1,7 @@
 <?php
 $pageTitle = 'Gestión de usuarios';
 $adminId = (int)currentUser()['id'];
+$userForm = $userForm ?? null;
 require_once VIEWS_PATH . '/layout/header.php';
 ?>
 
@@ -8,9 +9,15 @@ require_once VIEWS_PATH . '/layout/header.php';
     <h1 class="h3 mb-0">
         <i class="bi bi-people me-2"></i>Gestión de usuarios
     </h1>
-    <a href="<?= url('admin') ?>" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i> Volver al panel
-    </a>
+    <div class="d-flex gap-2 flex-wrap">
+        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal"
+                data-bs-target="#newUserModal">
+            <i class="bi bi-person-plus me-1"></i> Nuevo usuario
+        </button>
+        <a href="<?= url('admin') ?>" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Volver al panel
+        </a>
+    </div>
 </div>
 
 <?= renderFlash('admin') ?>
@@ -37,7 +44,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                         <div class="d-flex align-items-center gap-2">
                             <img src="<?= avatarUrl($u['avatar'] ?? 'default.png') ?>"
                                  class="rounded-circle" width="36" height="36" alt=""
-                                 onerror="this.src='<?= url('img/default.svg') ?>'">
+                                 onerror="this.onerror=null; this.src='/img/default.png'">
                             <span class="fw-semibold"><?= e($u['username']) ?></span>
                         </div>
                     </td>
@@ -119,6 +126,75 @@ require_once VIEWS_PATH . '/layout/header.php';
         <?php endif; ?>
     </ul>
 </nav>
+<?php endif; ?>
+
+<div class="modal fade" id="newUserModal" tabindex="-1"
+     aria-labelledby="newUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="<?= url('admin/user/create') ?>">
+                <?= csrfField() ?>
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="newUserModalLabel">Nuevo usuario</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                            aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="new_username">Usuario *</label>
+                        <input type="text" id="new_username" name="username" class="form-control"
+                               required minlength="3" maxlength="50"
+                               pattern="[a-zA-Z0-9_]+"
+                               title="Letras, números y guión bajo"
+                               autocomplete="off"
+                               value="<?= e($userForm['username'] ?? '') ?>">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="new_email">Email *</label>
+                        <input type="email" id="new_email" name="email" class="form-control"
+                               required autocomplete="off"
+                               value="<?= e($userForm['email'] ?? '') ?>">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="new_password">Contraseña *</label>
+                        <input type="password" id="new_password" name="password"
+                               class="form-control" required minlength="8"
+                               autocomplete="new-password">
+                        <div class="form-text">Mínimo 8 caracteres.</div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label" for="new_role">Rol</label>
+                        <select id="new_role" name="role" class="form-select">
+                            <option value="user" <?= ($userForm['role'] ?? 'user') === 'user' ? 'selected' : '' ?>>
+                                Usuario
+                            </option>
+                            <option value="admin" <?= ($userForm['role'] ?? '') === 'admin' ? 'selected' : '' ?>>
+                                Admin
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Crear usuario
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<?php if (($_GET['new'] ?? '') === '1'): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const el = document.getElementById('newUserModal');
+    if (el) {
+        new bootstrap.Modal(el).show();
+    }
+});
+</script>
 <?php endif; ?>
 
 <?php require_once VIEWS_PATH . '/layout/footer.php'; ?>
