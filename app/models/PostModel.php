@@ -57,6 +57,53 @@ class PostModel
         return $posts;
     }
 
+    public function getNewPosts(int $userId, int $lastId, int $limit = 10): array
+    {
+        $sql = 'SELECT p.id, p.user_id, p.content, p.image, p.created_at,
+                       u.username, u.avatar,
+                       (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS like_count,
+                       (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count,
+                       (SELECT COUNT(*) FROM likes l
+                        WHERE l.post_id = p.id AND l.user_id = ?) > 0 AS user_liked
+                FROM posts p
+                INNER JOIN users u ON u.id = p.user_id
+                WHERE p.id > ?
+                  AND (
+                        p.user_id = ?
+                     OR p.user_id IN (
+                            SELECT CASE
+                                WHEN sender_id = ? THEN receiver_id
+                                ELSE sender_id
+                            END
+                            FROM friends
+                            WHERE status = \'accepted\'
+                              AND (sender_id = ? OR receiver_id = ?)
+                       )
+                  )
+                ORDER BY p.id ASC
+                LIMIT ?';
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            $userId,
+            $lastId,
+            $userId,
+            $userId,
+            $userId,
+            $userId,
+            $limit,
+        ]);
+
+        $posts = $stmt->fetchAll();
+        foreach ($posts as &$post) {
+            $post['like_count']    = (int)$post['like_count'];
+            $post['comment_count'] = (int)$post['comment_count'];
+            $post['user_liked']    = (bool)$post['user_liked'];
+        }
+
+        return $posts;
+    }
+
     public function getByUser(int $profileId, int $viewerId, int $limit = 10, int $offset = 0): array
     {
         $sql = 'SELECT p.id, p.user_id, p.content, p.image, p.created_at,

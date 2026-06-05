@@ -37,6 +37,7 @@ require_once VIEWS_PATH . '/layout/header.php';
             </div>
         </div>
 
+        <div id="feed-container">
         <?php if (empty($posts)): ?>
         <div class="card text-center py-5">
             <div class="card-body">
@@ -55,6 +56,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                 <?php require VIEWS_PATH . '/posts/_post.php'; ?>
             <?php endforeach; ?>
         <?php endif; ?>
+        </div>
     </div>
 
     <div class="col-lg-4">

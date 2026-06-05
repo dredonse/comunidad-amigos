@@ -9,7 +9,7 @@ $commentCount = (int)($post['comment_count'] ?? 0);
 $likeCount   = (int)($post['like_count'] ?? 0);
 $userLiked   = !empty($post['user_liked']);
 ?>
-<article class="card post-card" id="post-<?= $postId ?>">
+<article class="card post-card" id="post-<?= $postId ?>" data-post-id="<?= $postId ?>">
     <div class="card-body">
         <div class="d-flex align-items-start gap-3">
             <img src="<?= avatarUrl($post['avatar'] ?? 'default.png') ?>"

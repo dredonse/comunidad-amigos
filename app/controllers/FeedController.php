@@ -110,4 +110,23 @@ class FeedController
         flash('feed', 'Publicación eliminada.');
         redirect('/feed');
     }
+
+    public function newPosts(): void
+    {
+        $user   = currentUser();
+        $userId = (int)$user['id'];
+        $lastId = max(0, (int)($_GET['last_id'] ?? 0));
+
+        $posts = $this->postModel->getNewPosts($userId, $lastId);
+
+        $this->json(['posts' => $posts]);
+    }
+
+    private function json(array $data, int $code = 200): never
+    {
+        http_response_code($code);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 }

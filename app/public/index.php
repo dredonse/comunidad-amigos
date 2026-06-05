@@ -26,6 +26,7 @@ $routes = [
     ['GET',  '/',         'FeedController', 'index'],
     ['POST', '/post',     'FeedController', 'store'],
     ['POST', '/post/delete', 'FeedController', 'delete'],
+    ['GET',  '/ajax/feed/new', 'FeedController', 'newPosts'],
 
     // Perfil
     ['GET',  '/profile',        'ProfileController', 'show'],

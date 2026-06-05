@@ -150,3 +150,94 @@ document.querySelectorAll('.alert.alert-success').forEach(el => {
         setTimeout(() => el.remove(), 500);
     }, 3000);
 });
+
+// ── Polling del feed ──────────────────────────────────────────
+(function() {
+    const feedContainer = document.querySelector('#feed-container');
+    if (!feedContainer) return;
+
+    let lastPostId = parseInt(
+        feedContainer.querySelector('.post-card')
+            ?.dataset.postId ?? '0'
+    );
+
+    async function checkNewPosts() {
+        try {
+            const res = await fetch('/ajax/feed/new?last_id=' + lastPostId);
+            const data = await res.json();
+
+            if (data.posts && data.posts.length > 0) {
+                showNewPostsButton(data.posts.length, data.posts);
+                lastPostId = data.posts[data.posts.length - 1].id;
+            }
+        } catch (err) {
+            console.error('Error polling feed:', err);
+        }
+    }
+
+    function showNewPostsButton(count, posts) {
+        document.querySelector('#new-posts-btn')?.remove();
+
+        const btn = document.createElement('div');
+        btn.id = 'new-posts-btn';
+        btn.className = 'alert alert-primary text-center cursor-pointer fade-in mb-3';
+        btn.style.cursor = 'pointer';
+        btn.innerHTML = `
+            <i class="bi bi-arrow-up-circle me-1"></i>
+            Ver ${count} publicación${count > 1 ? 'es' : ''} nueva${count > 1 ? 's' : ''}
+        `;
+        btn.addEventListener('click', () => {
+            insertNewPosts(posts);
+            btn.remove();
+        });
+
+        feedContainer.insertBefore(btn, feedContainer.firstChild);
+    }
+
+    function insertNewPosts(posts) {
+        posts.forEach(post => {
+            const div = document.createElement('div');
+            div.className = 'fade-in';
+            div.innerHTML = renderPost(post);
+            feedContainer.insertBefore(div, feedContainer.firstChild);
+        });
+    }
+
+    function renderPost(post) {
+        return `
+            <div class="card post-card mb-3" data-post-id="${post.id}">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <img src="/uploads/avatars/${escapeHtml(post.avatar)}"
+                             class="avatar me-2" width="42" height="42"
+                             onerror="this.onerror=null;this.src='/img/default.png'">
+                        <div>
+                            <strong>${escapeHtml(post.username)}</strong>
+                            <div class="text-muted small">ahora</div>
+                        </div>
+                    </div>
+                    <p style="white-space:pre-wrap">${escapeHtml(post.content)}</p>
+                    ${post.image ? `
+                        <img src="/uploads/posts/${escapeHtml(post.image)}"
+                             class="post-image rounded mb-2">
+                    ` : ''}
+                    <hr class="my-2">
+                    <div class="post-actions d-flex gap-2">
+                        <button class="btn btn-sm btn-like"
+                                data-post-id="${post.id}">
+                            <i class="bi bi-heart"></i>
+                            <span class="like-count">0</span>
+                            Me gusta
+                        </button>
+                        <button class="btn btn-sm btn-toggle-comments"
+                                data-post-id="${post.id}">
+                            <i class="bi bi-chat"></i> Comentar
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    // Iniciar polling cada 30 segundos
+    setInterval(checkNewPosts, 30000);
+})();

@@ -829,3 +829,119 @@ Para una comunidad privada de amigos la Opción B (PWA mobile-first) es más que
 ### Prerequisito
 
 Antes de abordar cualquiera de estas opciones es necesario tener la app desplegada en un servidor con HTTPS (Raspberry Pi, VPS o Railway) ya que las PWA y las notificaciones push requieren HTTPS para funcionar fuera de localhost.
+
+## Opciones de despliegue
+
+### Situación actual
+
+La app corre en localhost y solo es accesible desde el ordenador de desarrollo. Para que los amigos puedan acceder y las notificaciones push funcionen en móvil se necesita un servidor con HTTPS y acceso público.
+
+### Opciones gratuitas o casi gratuitas
+
+**Railway (recomendado para empezar)**
+
+- Soporta Docker directamente
+- HTTPS automático
+- Plan gratuito con límites (500 horas/mes)
+- Conectas el repo de GitHub y despliega solo
+- Ideal para probar antes de invertir en hardware
+- URL: [railway.app](https://railway.app)
+
+**Render**
+
+- Similar a Railway
+- Plan gratuito pero los contenedores se duermen si no hay tráfico (~30 segundos para despertar)
+- No ideal para uso continuo
+- URL: [render.com](https://render.com)
+
+**Fly.io**
+
+- Soporta Docker
+- Plan gratuito generoso
+- Más técnico que Railway pero muy potente
+- URL: [fly.io](https://fly.io)
+
+### VPS (Servidor Virtual Privado)
+
+Servidores en la nube que se alquilan por meses. Control total igual que una Raspberry Pi pero sin hardware en casa.
+
+| Proveedor | Precio | RAM | Notas |
+|-----------|--------|-----|-------|
+| Hetzner | 4€/mes | 2GB | Mejor precio/calidad en Europa |
+| OVH | 3€/mes | 2GB | Datacenter en España |
+| DigitalOcean | 6$/mes | 1GB | Muy popular, buena documentación |
+| Vultr | 5$/mes | 1GB | Similar a DigitalOcean |
+| Contabo | 5€/mes | 4GB | Mucha RAM por poco precio |
+
+### Opciones en casa (hardware propio)
+
+**Raspberry Pi 4**
+
+- Ordenador del tamaño de una tarjeta de crédito
+- Coste: ~70€ hardware + ~10€ microSD
+- Consumo: ~1€/mes en electricidad
+- Tus datos físicamente en casa
+- Control total y privacidad máxima
+- Requiere configurar: dominio, DuckDNS, Nginx y Let's Encrypt para HTTPS
+
+**PC o portátil viejo**
+
+- Si tienes un equipo sin usar, es gratis
+- Funciona exactamente igual que la Raspberry Pi
+- Mayor consumo eléctrico (~3-5€/mes)
+- Misma configuración que la Raspberry Pi
+
+**Mini PC (Intel NUC, Beelink...)**
+
+- Más potente que la Raspberry Pi
+- Consumo bajo (15-30W)
+- Precio desde 100€
+- Buena opción intermedia
+
+**NAS (Synology, QNAP)**
+
+- Si ya tienes uno, soporta Docker
+- Despliegue directo sin hardware adicional
+
+### Comparativa
+
+| Opción | Coste inicial | Coste mensual | Dificultad | HTTPS | 24/7 |
+|--------|-------------|---------------|------------|-------|------|
+| Railway | 0€ | 0-20$ | Fácil | Auto | ✅ |
+| Render | 0€ | 0-7$ | Fácil | Auto | ⚠️ |
+| Fly.io | 0€ | 0-10$ | Media | Auto | ✅ |
+| Hetzner VPS | 0€ | 4€ | Media | Manual | ✅ |
+| OVH VPS | 0€ | 3€ | Media | Manual | ✅ |
+| Raspberry Pi 4 | 70€ | ~1€ | Media | Manual | ✅ |
+| PC viejo | 0€ | ~3€ | Media | Manual | ✅ |
+| Mini PC | 100€ | ~2€ | Media | Manual | ✅ |
+
+### Recomendación según objetivo
+
+**Probar hoy mismo**  
+Railway. Gratis, fácil, en 10 minutos la app está en internet con HTTPS y notificaciones push funcionando en el móvil.
+
+**Estable y barato a largo plazo**  
+Hetzner VPS a 4€/mes. Sin preocuparse del hardware, con soporte profesional y datacenter fiable.
+
+**Control total y privacidad máxima**  
+Raspberry Pi o PC viejo en casa. Los datos físicamente en casa, sin depender de ninguna empresa externa.
+
+**Ya tienes un PC viejo sin usar**  
+Úsalo directamente. Es gratis y funciona exactamente igual que la Raspberry Pi.
+
+### Pasos comunes para cualquier opción con VPS/hardware
+
+1. Instalar Docker y Docker Compose
+2. Clonar el repositorio de GitHub
+3. Configurar `.env` con contraseñas seguras
+4. Configurar Nginx como proxy inverso
+5. Obtener certificado SSL con Let's Encrypt
+6. Configurar dominio (propio o DuckDNS gratuito)
+7. Abrir puertos en el router (solo para opciones en casa)
+8. Ejecutar `docker compose up -d --build`
+9. Configurar renovación automática del certificado SSL
+
+### Prerequisito para notificaciones push y PWA
+
+Cualquier opción de despliegue debe tener HTTPS configurado. Sin HTTPS las notificaciones push no funcionan y la PWA no se puede instalar en el móvil.
