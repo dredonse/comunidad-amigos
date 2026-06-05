@@ -707,6 +707,72 @@ app/views/layout/header.php    (meta csrf-token)
 app/public/js/app.js           (fix const form duplicado)
 ```
 
+### Sesión 14 — Polling del feed y mejoras generales
+
+**Fecha:** 29/05/2026  
+**Estado:** ✅ Completado
+
+**Objetivos:**
+Implementar actualización del feed en tiempo real con 
+polling y revisar el comportamiento general de la app.
+
+**Trabajo realizado:**
+
+**Polling del feed**
+- Nuevo endpoint GET /ajax/feed/new en FeedController.
+- Método getNewPosts(userId, lastId) en PostModel:
+  misma lógica que getFeed() con AND p.id > lastId,
+  ORDER BY id ASC, LIMIT 10.
+- Polling en app.js cada 30 segundos usando IIFE para
+  scope correcto de lastPostId.
+- Al detectar posts nuevos muestra botón azul discreto
+  "Ver X publicaciones nuevas" en vez de insertar 
+  automáticamente para no interrumpir la lectura.
+- Al pulsar el botón se insertan los posts nuevos 
+  arriba del feed con animación fade-in.
+- Solo activo cuando existe #feed-container en la página.
+
+**Decisiones de diseño tomadas**
+- Feed general vs feed de amigos: se mantiene el modelo
+  de feed de amigos (solo ves posts de tus amigos).
+  Para comunidades pequeñas y cerradas valorar cambiar
+  a feed global en el futuro.
+- Posts de grupos separados del feed general: cada grupo
+  tiene su propio espacio, los posts no se mezclan 
+  con el feed personal. Igual que Facebook.
+- Like y comentario en posts propios: deshabilitado 
+  en UI y validado en backend.
+- Polling vs WebSockets vs SSE para el feed: se eligió
+  polling por simplicidad. Para el feed 30 segundos 
+  de retraso es aceptable. WebSockets se reserva para
+  el chat donde sí se necesita instantaneidad.
+
+**Correcciones adicionales**
+- Grupos privados: corregido bug que los mostraba a 
+  usuarios no miembros.
+- Avatar default: corregido bucle infinito de onerror.
+- CSRF token AJAX: corregido con meta tag en header.
+- app.js const form duplicado: corregido con IIFE y 
+  nombres de variables únicos.
+
+**Pendiente para próximas sesiones**
+- Reset de contraseña por email (Gmail SMTP)
+- Icono PWA (icon-192.png no es PNG real)
+- Diseño mobile-first para PWA
+- Despliegue en servidor con HTTPS
+- Ver más comentarios por AJAX
+- Fase 3: Videochat WebRTC, Streaming HLS
+
+**Archivos creados / modificados:**
+```
+app/public/index.php           (modificado: ruta feed/new)
+app/controllers/FeedController.php  (modificado: newPosts)
+app/models/PostModel.php       (modificado: getNewPosts)
+app/public/js/app.js           (modificado: polling IIFE)
+app/views/posts/feed.php       (modificado: #feed-container)
+app/views/posts/_post.php      (modificado: data-post-id)
+```
+
 ## 🗺️ Roadmap
 
 | Módulo | Estado |
@@ -723,6 +789,7 @@ app/public/js/app.js           (fix const form duplicado)
 | Panel de administración | ✅ Completado |
 | Sistema de grupos | ✅ Completado |
 | Correcciones y mejoras | ✅ Completado |
+| Polling del feed | ✅ Completado |
 
 > El roadmap principal del proyecto (Fase 1) está **completamente terminado**: todos los módulos en ✅ Completado.
 >
@@ -743,6 +810,7 @@ Mejoras pensadas para integrarse en el producto con alcance definido y uso en en
 | 3 | **Notificaciones push** | ✅ Completado | PWA con Push API, Service Worker y web-push (Sesión 11) |
 | 4 | **WebSockets** | ✅ Completado | Mensajería en tiempo real con [Ratchet](https://github.com/ratchetphp/Ratchet) (Sesión 12) |
 | 5 | **Correcciones y mejoras** | ✅ Completado | Panel admin ampliado, bugs de privacidad y UX (Sesión 13) |
+| 6 | **Polling del feed** | ✅ Completado | Feed actualizado cada 30 s sin interrumpir lectura (Sesión 14) |
 
 ### Correcciones y mejoras
 
@@ -753,6 +821,18 @@ Pulido transversal tras cerrar Fase 2: administración, mensajería y correcció
 | **Panel de administración** | ✅ Completado | Dashboard, gestión de posts/eventos/grupos, alta de usuarios (Sesión 13) |
 | **Privacidad y UX** | ✅ Completado | Grupos privados, likes/comentarios propios, avatares, CSRF, app.js (Sesión 13) |
 | **Mensajería** | ✅ Completado | Modal «Nuevo mensaje» con buscador de amigos (Sesión 13) |
+| **Polling del feed** | ✅ Completado | Actualización cada 30 s con botón discreto (Sesión 14) |
+
+### Pendiente para próximas sesiones
+
+| Tarea | Descripción |
+|-------|-------------|
+| **Reset de contraseña** | Recuperación por email vía Gmail SMTP |
+| **Icono PWA** | Sustituir `icon-192.png` por un PNG real |
+| **Diseño mobile-first** | Rediseño de vistas para PWA en móvil |
+| **Despliegue HTTPS** | Servidor público (Railway, VPS, Raspberry Pi, etc.) |
+| **Ver más comentarios** | Carga de comentarios adicionales por AJAX |
+| **Fase 3** | Videochat WebRTC y streaming HLS (exploración local) |
 
 ### Fase 3 — Exploración técnica en local
 
