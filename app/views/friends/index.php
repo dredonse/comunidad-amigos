@@ -90,9 +90,13 @@ require_once VIEWS_PATH . '/layout/header.php';
                                         ? e($friend['bio'])
                                         : 'Sin biografía' ?>
                                 </p>
-                                <small class="text-muted">
+                                <small class="text-muted d-block mb-2">
                                     Amigos desde <?= e(timeAgo($friend['friends_since'])) ?>
                                 </small>
+                                <a href="<?= url('messages/' . (int)$friend['id']) ?>"
+                                   class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-chat-dots me-1"></i> Mensaje
+                                </a>
                             </div>
                         </div>
                     </div>

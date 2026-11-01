@@ -105,6 +105,10 @@ require_once VIEWS_PATH . '/layout/header.php';
 
                 <?php else: ?>
                 <div class="mt-2">
+                    <a href="<?= url('messages/' . (int)$profileUser['id']) ?>"
+                       class="btn btn-primary btn-sm mb-2">
+                        <i class="bi bi-chat-dots me-1"></i> Enviar mensaje
+                    </a>
                     <?php if ($friendStatus === null): ?>
                     <form method="POST" action="<?= url('friends/request') ?>">
                         <?= csrfField() ?>
