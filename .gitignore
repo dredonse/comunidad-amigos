@@ -1,8 +1,22 @@
+# Secretos
 .env
+
+# Dependencias (se instalan con Composer)
 app/vendor/
 docker/websocket/vendor/
+
+# Datos generados en ejecución
+app/public/uploads/*
+!app/public/uploads/.htaccess
 docker/mysql/data/
-uploads/
 *.log
+
+# Material local que no forma parte del proyecto
+Documentacion/
+Referencias/
+
+# Editor y sistema
+.idea/
+.vscode/
 .DS_Store
 Thumbs.db
