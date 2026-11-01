@@ -36,7 +36,13 @@ function ask(string $label, bool $hidden = false): string
 
 $username = ask('Usuario (3-50, letras, números y _): ');
 $email    = strtolower(ask('Email: '));
-$password = ask('Contraseña (mínimo 12 caracteres): ', true);
+$password = ask('Contraseña (mínimo 12 caracteres, no se ve al escribir): ', true);
+$confirm  = ask('Repite la contraseña: ', true);
+
+if ($password !== $confirm) {
+    fwrite(STDERR, "Las contraseñas no coinciden. No se ha cambiado nada.\n");
+    exit(1);
+}
 
 if (!preg_match('/^[a-zA-Z0-9_]{3,50}$/', $username)) {
     fwrite(STDERR, "Usuario no válido.\n");
@@ -54,16 +60,26 @@ if (strlen($password) < 12) {
 $db   = Database::getConnection();
 $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
 
-$stmt = $db->prepare('SELECT id FROM users WHERE email = ? OR username = ? LIMIT 1');
+$stmt = $db->prepare('SELECT id, username, email FROM users WHERE email = ? OR username = ?');
 $stmt->execute([$email, $username]);
-$existing = $stmt->fetchColumn();
+$matches = $stmt->fetchAll();
 
-if ($existing !== false) {
+if (count($matches) > 1) {
+    fwrite(STDERR, "Ese usuario y ese email pertenecen a cuentas distintas. Usa los de una misma cuenta.\n");
+    exit(1);
+}
+
+if ($matches !== []) {
+    $user = $matches[0];
     $db->prepare('UPDATE users SET role = \'admin\', active = 1, password = ? WHERE id = ?')
-       ->execute([$hash, (int)$existing]);
-    echo "Usuario existente ascendido a administrador.\n";
+       ->execute([$hash, (int)$user['id']]);
+    echo "Cuenta existente actualizada: ahora es administradora, está activa y tiene la contraseña nueva.\n";
+    $loginEmail = $user['email'];
 } else {
     $db->prepare('INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, \'admin\')')
        ->execute([$username, $email, $hash]);
     echo "Administrador creado.\n";
+    $loginEmail = $email;
 }
+
+echo "Entra con el email: {$loginEmail}\n";
