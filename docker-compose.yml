@@ -1,12 +1,10 @@
-version: '3.9'
-
 services:
   web:
     build:
       context: ./app
       dockerfile: ../docker/php/Dockerfile
     container_name: comunidad_web
-    restart: always
+    restart: unless-stopped
     ports:
       - "8080:80"
     volumes:
@@ -15,31 +13,34 @@ services:
       db:
         condition: service_healthy
     environment:
-      - DB_HOST=${DB_HOST}
+      - DB_HOST=db
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
-      - APP_ENV=${APP_ENV}
-      - APP_DEBUG=${APP_DEBUG}
-      - APP_SECRET=${APP_SECRET}
-      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
-      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+      - APP_ENV=${APP_ENV:-development}
+      - APP_DEBUG=${APP_DEBUG:-false}
+      - APP_SECRET=${APP_SECRET:?Define APP_SECRET en .env}
+      - APP_URL=${APP_URL:-http://localhost:8080}
+      - SESSION_LIFETIME=${SESSION_LIFETIME:-3600}
+      - WS_PUBLIC_URL=${WS_PUBLIC_URL:-ws://localhost:8090}
+      - WS_INTERNAL_ADDRESS=websocket:8091
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
       - VAPID_SUBJECT=${VAPID_SUBJECT:-mailto:admin@comunidad.local}
 
   db:
     image: mariadb:11
     container_name: comunidad_db
-    restart: always
+    restart: unless-stopped
+    # Sin "ports": la BD solo es accesible desde la red interna de Docker
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASS}
-    ports:
-      - "3306:3306"
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASS}
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASS}
     volumes:
       - db_data:/var/lib/mysql
-      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
@@ -49,9 +50,9 @@ services:
   websocket:
     build: ./docker/websocket
     container_name: comunidad_ws
-    restart: always
+    restart: unless-stopped
     ports:
-      - "8090:8090"
+      - "8090:8090"   # público: navegadores. El 8091 (canal interno con la web) no se publica.
     volumes:
       - ./docker/websocket:/app
     depends_on:
@@ -62,17 +63,19 @@ services:
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
+      - APP_SECRET=${APP_SECRET:?Define APP_SECRET en .env}
+      - WS_ALLOWED_ORIGINS=${APP_URL:-http://localhost:8080}
 
+  # Herramienta de desarrollo: no arranca por defecto.
+  #   docker compose --profile tools up -d phpmyadmin   →   http://127.0.0.1:8081
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: comunidad_pma
-    restart: always
+    profiles: ["tools"]
     ports:
-      - "8081:80"
+      - "127.0.0.1:8081:80"   # solo desde tu máquina; pide usuario y contraseña
     environment:
       PMA_HOST: db
-      PMA_USER: ${DB_USER}
-      PMA_PASSWORD: ${DB_PASS}
     depends_on:
       - db
 

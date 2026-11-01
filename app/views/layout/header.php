@@ -9,8 +9,10 @@
     <?php if (isLoggedIn()): ?>
     <meta name="csrf-token" content="<?= e(csrfToken()) ?>">
     <?php endif; ?>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+          integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/app.css">
 </head>
 <body class="bg-light">
@@ -71,7 +73,7 @@
                        data-bs-toggle="dropdown">
                         <img src="<?= avatarUrl($_SESSION['avatar'] ?? 'default.png') ?>"
                              class="rounded-circle" width="32" height="32" alt="Avatar"
-                             onerror="this.src='<?= url('css/../img/default.png') ?>'">
+                             onerror="this.src='<?= url('img/default.svg') ?>'">
                         <span><?= e($_SESSION['username'] ?? '') ?></span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
@@ -87,8 +89,14 @@
                             <i class="bi bi-shield-check me-1"></i> Administración</a></li>
                         <?php endif; ?>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger" href="<?= url('logout') ?>">
-                            <i class="bi bi-box-arrow-right me-1"></i> Cerrar sesión</a></li>
+                        <li>
+                            <form method="POST" action="<?= url('logout') ?>" id="logout-form" class="m-0">
+                                <?= csrfField() ?>
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="bi bi-box-arrow-right me-1"></i> Cerrar sesión
+                                </button>
+                            </form>
+                        </li>
                     </ul>
                 </li>
             </ul>

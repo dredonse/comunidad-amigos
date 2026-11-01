@@ -1,6 +1,6 @@
 FROM php:8.3-apache
 
-# Instalar extensiones necesarias (gmp requerido por web-push)
+# Extensiones: pdo_mysql (BD), gd + exif (re-codificar imágenes subidas), gmp (web-push), opcache
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
@@ -10,12 +10,12 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     git \
-    curl \
     && docker-php-ext-configure gd --with-jpeg --with-webp \
     && docker-php-ext-install \
         pdo \
         pdo_mysql \
         gd \
+        exif \
         zip \
         gmp \
         opcache \
@@ -24,10 +24,10 @@ RUN apt-get update && apt-get install -y \
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Habilitar mod_rewrite para URLs limpias
-RUN a2enmod rewrite
+# mod_rewrite (URLs limpias) y mod_headers (cabeceras de seguridad del .htaccess)
+RUN a2enmod rewrite headers
 
-# VirtualHost: DocumentRoot en public/ (index.php del router)
+# VirtualHost: DocumentRoot en public/ y PHP desactivado en la carpeta de subidas
 RUN printf '%s\n' \
     '<VirtualHost *:80>' \
     '    DocumentRoot /var/www/html/public' \
@@ -35,23 +35,35 @@ RUN printf '%s\n' \
     '        AllowOverride All' \
     '        Require all granted' \
     '    </Directory>' \
+    '    <Directory /var/www/html/public/uploads>' \
+    '        php_admin_flag engine off' \
+    '        <FilesMatch "(?i)\.(php[0-9]?|phtml|phar|pht|phps)$">' \
+    '            Require all denied' \
+    '        </FilesMatch>' \
+    '    </Directory>' \
     '    ErrorLog ${APACHE_LOG_DIR}/error.log' \
     '    CustomLog ${APACHE_LOG_DIR}/access.log combined' \
     '</VirtualHost>' \
-    > /etc/apache2/sites-available/000-default.conf
+    > /etc/apache2/sites-available/000-default.conf \
+    && printf 'ServerTokens Prod\nServerSignature Off\n' > /etc/apache2/conf-available/zz-hardening.conf \
+    && a2enconf zz-hardening
 
 # Configuración de PHP
-RUN echo "upload_max_filesize = 10M\n\
-post_max_size = 10M\n\
-max_execution_time = 60\n\
-display_errors = Off\n\
-log_errors = On" > /usr/local/etc/php/conf.d/custom.ini
+RUN printf '%s\n' \
+    'upload_max_filesize = 6M' \
+    'post_max_size = 8M' \
+    'max_execution_time = 60' \
+    'display_errors = Off' \
+    'log_errors = On' \
+    'expose_php = Off' \
+    > /usr/local/etc/php/conf.d/custom.ini
+
+# Dependencias PHP (web-push) fuera de la carpeta montada como volumen:
+# así existen también en un clon limpio, donde app/vendor/ no está.
+WORKDIR /opt/app-deps
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 WORKDIR /var/www/html
-
-# Dependencias PHP (web-push); el volumen monta app/ en runtime
-COPY composer.json composer.lock* ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction 2>/dev/null \
-    || composer install --no-dev --optimize-autoloader --no-interaction
 
 EXPOSE 80

@@ -62,7 +62,7 @@ class AuthController
         $id = $this->userModel->create($username, $email, $password);
         $this->createSession($this->userModel->findById($id));
 
-        flash('success', '¡Bienvenido a la comunidad, ' . e($username) . '!');
+        flash('success', '¡Bienvenido a la comunidad, ' . $username . '!');
         redirect('/feed');
     }
 
@@ -84,7 +84,12 @@ class AuthController
 
         $user = $this->userModel->findByEmail($email);
 
-        if (!$user || !$this->userModel->verifyPassword($password, $user['password'])) {
+        // Si el email no existe se verifica igualmente contra un hash ficticio:
+        // así la respuesta tarda lo mismo y no revela qué emails tienen cuenta.
+        $hash  = $user['password'] ?? '$2y$12$dTT3MmBqDmNXMORLenRiTOeqSXU1rbGwLd9DFmLB/ITgAk3QY.f62';
+        $valid = $this->userModel->verifyPassword($password, $hash);
+
+        if (!$user || !$valid) {
             flash('auth', 'Credenciales incorrectas.', 'danger');
             redirect('/login');
         }
@@ -96,7 +101,7 @@ class AuthController
 
         $this->createSession($user);
 
-        flash('success', '¡Bienvenido de nuevo, ' . e($user['username']) . '!');
+        flash('success', '¡Bienvenido de nuevo, ' . $user['username'] . '!');
         redirect('/feed');
     }
 
@@ -104,15 +109,11 @@ class AuthController
 
     public function logout(): void
     {
-        $_SESSION = [];
-        if (ini_get('session.use_cookies')) {
-            $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000,
-                $params['path'], $params['domain'],
-                $params['secure'], $params['httponly']
-            );
-        }
-        session_destroy();
+        // POST + CSRF: con un GET, cualquier web podría cerrarte la sesión con un <img src="/logout">
+        verifyCsrf();
+        endSession();
+        // Pide al navegador que borre la caché HTTP de este sitio (páginas privadas)
+        header('Clear-Site-Data: "cache"');
         redirect('/login');
     }
 

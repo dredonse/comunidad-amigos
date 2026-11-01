@@ -9,10 +9,10 @@ class Database
     public static function getConnection(): PDO
     {
         if (self::$instance === null) {
-            $host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?? 'db';
-            $name = $_ENV['DB_NAME'] ?? getenv('DB_NAME') ?? 'comunidad';
-            $user = $_ENV['DB_USER'] ?? getenv('DB_USER') ?? 'usuario';
-            $pass = $_ENV['DB_PASS'] ?? getenv('DB_PASS') ?? 'password';
+            $host = env('DB_HOST', 'db');
+            $name = env('DB_NAME', 'comunidad');
+            $user = env('DB_USER', '');
+            $pass = env('DB_PASS', '');
 
             $dsn = "mysql:host={$host};dbname={$name};charset=utf8mb4";
 
@@ -24,6 +24,7 @@ class Database
                 ]);
             } catch (PDOException $e) {
                 error_log('DB connection failed: ' . $e->getMessage());
+                http_response_code(500);
                 die(json_encode(['error' => 'Error de conexión a la base de datos']));
             }
         }

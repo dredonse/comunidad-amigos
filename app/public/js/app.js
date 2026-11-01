@@ -37,11 +37,11 @@ document.addEventListener('click', async function(e) {
 
 // ── Comentarios en grupos ─────────────────────────────────────
 document.addEventListener('submit', async function(e) {
-    const form = e.target.closest('.group-comment-form');
-    if (form) {
+    const groupForm = e.target.closest('.group-comment-form');
+    if (groupForm) {
         e.preventDefault();
-        const postId  = form.dataset.groupPostId;
-        const input   = form.querySelector('input[name="comment"]');
+        const postId  = groupForm.dataset.groupPostId;
+        const input   = groupForm.querySelector('input[name="comment"]');
         const comment = input?.value.trim();
         if (!comment) return;
 
@@ -54,7 +54,7 @@ document.addEventListener('submit', async function(e) {
                 const list = document.querySelector(`#group-comments-${postId}`);
                 const html = `
                     <div class="comment-item d-flex gap-2 fade-in">
-                        <img src="" class="rounded-circle" width="28" height="28" alt="">
+                        <img src="${escapeHtml(avatarSrc(data.avatar))}" class="rounded-circle" width="28" height="28" alt="">
                         <div>
                             <strong>${escapeHtml(data.username)}</strong>
                             <span class="text-muted ms-1">${escapeHtml(data.comment)}</span>
@@ -97,7 +97,6 @@ document.addEventListener('submit', async function(e) {
 document.addEventListener('submit', async function(e) {
     const form = e.target.closest('.message-form');
     if (!form) return;
-    if (form.dataset.wsConnected === '1') return;
 
     const input = form.querySelector('input[name="content"]');
     const content = input?.value.trim();
@@ -153,7 +152,14 @@ function escapeHtml(str) {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function avatarSrc(avatar) {
+    return !avatar || avatar === 'default.png'
+        ? '/img/default.svg'
+        : '/uploads/avatars/' + encodeURIComponent(avatar);
 }
 
 // ── Cerrar alertas automáticamente (3 s) ─────────────────────
@@ -162,4 +168,24 @@ document.querySelectorAll('.alert.alert-success').forEach(el => {
         el.classList.add('fade');
         setTimeout(() => el.remove(), 500);
     }, 3000);
+});
+
+// ── Cerrar sesión ─────────────────────────────────────────────
+// Antes de salir: se borra la suscripción push de este navegador (si no, la siguiente
+// persona que use el equipo recibiría tus notificaciones) y las cachés del Service Worker.
+document.getElementById('logout-form')?.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const form = this;
+    try {
+        if (typeof window.unsubscribeFromPush === 'function') {
+            await window.unsubscribeFromPush();
+        }
+        if ('caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(key => caches.delete(key)));
+        }
+    } catch (err) {
+        console.warn('Limpieza al cerrar sesión incompleta:', err);
+    }
+    HTMLFormElement.prototype.submit.call(form);
 });

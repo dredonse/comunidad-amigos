@@ -19,7 +19,7 @@ $routes = [
     ['POST', '/login',    'AuthController', 'login'],
     ['GET',  '/register', 'AuthController', 'showRegister'],
     ['POST', '/register', 'AuthController', 'register'],
-    ['GET',  '/logout',   'AuthController', 'logout'],
+    ['POST', '/logout',   'AuthController', 'logout'],
 
     // Feed principal
     ['GET',  '/feed',     'FeedController', 'index'],
@@ -62,6 +62,7 @@ $routes = [
     ['GET',  '/messages',          'MessageController', 'index'],
     ['GET',  '/messages/(\d+)',    'MessageController', 'conversation'],
     ['POST', '/messages/send',     'MessageController', 'send'],
+    ['POST', '/messages/read',     'MessageController', 'markRead'],
 
     // Notificaciones
     ['GET',  '/notifications',      'NotificationController', 'index'],
@@ -87,21 +88,13 @@ $routes = [
 $matched = false;
 
 foreach ($routes as [$routeMethod, $pattern, $controller, $action]) {
-    // Escapar el patrón para regex
     $regex = '@^' . $pattern . '$@';
 
     if ($method === $routeMethod && preg_match($regex, $uri, $matches)) {
         $matched = true;
         array_shift($matches); // quitar coincidencia completa
 
-        // Cargar controlador
-        $file = BASE_PATH . '/controllers/' . $controller . '.php';
-        if (!file_exists($file)) {
-            http_response_code(500);
-            die("Controlador {$controller} no encontrado.");
-        }
-        require_once $file;
-
+        // El autoloader carga el controlador (models/, controllers/, helpers/)
         $ctrl = new $controller();
         $params = array_map(
             static fn (string $param): int|string => ctype_digit($param) ? (int) $param : $param,

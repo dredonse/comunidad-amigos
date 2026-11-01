@@ -28,16 +28,21 @@
         return meta ? meta.getAttribute('content') : '';
     }
 
-    function updateButtonLabel() {
-        if (Notification.permission === 'granted') {
-            btn.textContent = 'Desactivar notificaciones push';
-            btn.classList.remove('btn-outline-primary');
-            btn.classList.add('btn-outline-secondary');
-        } else {
-            btn.textContent = 'Activar notificaciones push';
-            btn.classList.remove('btn-outline-secondary');
-            btn.classList.add('btn-outline-primary');
+    // El estado real es si existe una suscripción, no el permiso: tras darse de baja,
+    // el permiso sigue en "granted" y antes el botón ya no permitía volver a activarlas.
+    async function isSubscribed() {
+        if (!swRegistration) {
+            return false;
         }
+        return (await swRegistration.pushManager.getSubscription()) !== null;
+    }
+
+    async function updateButtonLabel() {
+        const subscribed = Notification.permission === 'granted' && await isSubscribed();
+        btn.innerHTML = subscribed
+            ? '<i class="bi bi-bell-slash me-1"></i> Desactivar notificaciones push'
+            : '<i class="bi bi-bell me-1"></i> Activar notificaciones push';
+        btn.dataset.subscribed = subscribed ? '1' : '0';
     }
 
     function subscriptionPayload(subscription) {
@@ -96,6 +101,7 @@
         if (!result.success) {
             console.error('Error al suscribir push:', result);
         }
+        await updateButtonLabel();
     };
 
     window.unsubscribeFromPush = async function () {
@@ -108,20 +114,20 @@
 
         const subscription = await swRegistration.pushManager.getSubscription();
         if (!subscription) {
-            updateButtonLabel();
+            await updateButtonLabel();
             return;
         }
 
         const keys = subscription.toJSON().keys || {};
         await postJson(PUSH_UNSUBSCRIBE_URL, { auth: keys.auth || '' });
         await subscription.unsubscribe();
-        updateButtonLabel();
+        await updateButtonLabel();
     };
 
     btn.addEventListener('click', async function (e) {
         e.preventDefault();
         try {
-            if (Notification.permission === 'granted') {
+            if (btn.dataset.subscribed === '1') {
                 await window.unsubscribeFromPush();
             } else {
                 await window.subscribeToPush();
@@ -134,10 +140,8 @@
 
     navigator.serviceWorker.register('/sw.js').then(function (reg) {
         swRegistration = reg;
-        updateButtonLabel();
+        return updateButtonLabel();
     }).catch(function (err) {
         console.error('Service Worker:', err);
     });
-
-    updateButtonLabel();
 })();

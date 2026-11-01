@@ -18,18 +18,25 @@ class PushController
 
         $payload = $this->readJsonBody();
 
-        $endpoint = trim($payload['endpoint'] ?? '');
-        $p256dh   = trim($payload['keys']['p256dh'] ?? '');
-        $auth     = trim($payload['keys']['auth'] ?? '');
+        $endpoint = trim((string)($payload['endpoint'] ?? ''));
+        $p256dh   = trim((string)($payload['keys']['p256dh'] ?? ''));
+        $auth     = trim((string)($payload['keys']['auth'] ?? ''));
 
         if ($endpoint === '' || $p256dh === '' || $auth === '') {
-            $this->json(['success' => false, 'error' => 'Suscripción incompleta.'], 400);
+            jsonResponse(['success' => false, 'error' => 'Suscripción incompleta.'], 400);
+        }
+
+        // El servidor hará peticiones a este endpoint: solo HTTPS y solo a servicios push
+        // conocidos, para que nadie lo use para hacer peticiones a otras máquinas (SSRF).
+        if (!$this->isKnownPushService($endpoint)
+            || strlen($endpoint) > 1000 || strlen($p256dh) > 255 || strlen($auth) > 255) {
+            jsonResponse(['success' => false, 'error' => 'Suscripción no válida.'], 400);
         }
 
         $userId = (int)currentUser()['id'];
         $this->pushModel->save($userId, $endpoint, $p256dh, $auth);
 
-        $this->json(['success' => true]);
+        jsonResponse(['success' => true]);
     }
 
     public function unsubscribe(): void
@@ -37,16 +44,37 @@ class PushController
         verifyCsrf();
 
         $payload = $this->readJsonBody();
-        $auth    = trim($payload['auth'] ?? '');
+        $auth    = trim((string)($payload['auth'] ?? ''));
 
         if ($auth === '') {
-            $this->json(['success' => false, 'error' => 'Token auth requerido.'], 400);
+            jsonResponse(['success' => false, 'error' => 'Token auth requerido.'], 400);
         }
 
         $userId = (int)currentUser()['id'];
         $this->pushModel->delete($userId, $auth);
 
-        $this->json(['success' => true]);
+        jsonResponse(['success' => true]);
+    }
+
+    private function isKnownPushService(string $endpoint): bool
+    {
+        $parts = parse_url($endpoint);
+        if (($parts['scheme'] ?? '') !== 'https' || empty($parts['host'])) {
+            return false;
+        }
+        $host = strtolower($parts['host']);
+        foreach ([
+            'fcm.googleapis.com',               // Chrome, Edge, Opera
+            'push.services.mozilla.com',        // Firefox
+            'notify.windows.com',               // Edge (antiguo)
+            'push.apple.com',                   // Safari
+        ] as $service) {
+            if ($host === $service || str_ends_with($host, '.' . $service)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function readJsonBody(): array
@@ -59,13 +87,5 @@ class PushController
         $data = json_decode($raw, true);
 
         return is_array($data) ? $data : [];
-    }
-
-    private function json(array $data, int $code = 200): never
-    {
-        http_response_code($code);
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($data, JSON_UNESCAPED_UNICODE);
-        exit;
     }
 }

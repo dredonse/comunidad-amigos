@@ -20,6 +20,6 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 COPY . .
 
-EXPOSE 8090
+EXPOSE 8090 8091
 
 CMD ["sh", "-c", "composer install --no-dev --optimize-autoloader --no-interaction 2>/dev/null; php server.php"]

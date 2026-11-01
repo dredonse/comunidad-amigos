@@ -198,7 +198,10 @@ require_once VIEWS_PATH . '/layout/header.php';
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
-    L.marker([lat, lng]).addTo(map).bindPopup(title);
+    // Leaflet interpreta el contenido del popup como HTML: se pasa un nodo con textContent
+    const popup = document.createElement('strong');
+    popup.textContent = title;
+    L.marker([lat, lng]).addTo(map).bindPopup(popup);
 })();
 </script>
 <?php endif; ?>

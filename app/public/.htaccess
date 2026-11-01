@@ -8,7 +8,7 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php [QSA,L]
 
 # Seguridad: bloquear acceso a archivos sensibles
-<FilesMatch "\.(env|sql|log|sh|git)$">
+<FilesMatch "(^\.|\.(env|sql|log|sh|git|md|lock)$)">
     Require all denied
 </FilesMatch>
 
@@ -16,6 +16,6 @@ RewriteRule ^(.*)$ index.php [QSA,L]
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "SAMEORIGIN"
-    Header set X-XSS-Protection "1; mode=block"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
 </IfModule>

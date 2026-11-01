@@ -60,9 +60,16 @@ class MessageController
             $pag['offset']
         );
 
+        $wsUrl   = env('WS_PUBLIC_URL', 'ws://localhost:8090');
+        $wsToken = wsToken($userId);
+
         require_once VIEWS_PATH . '/messages/conversation.php';
     }
 
+    /**
+     * Único punto de entrada para enviar mensajes: sesión, CSRF, validación,
+     * notificación, push y, por último, aviso al servidor WebSocket para la entrega en vivo.
+     */
     public function send(): void
     {
         verifyCsrf();
@@ -70,33 +77,24 @@ class MessageController
         $user       = currentUser();
         $senderId   = (int)$user['id'];
         $receiverId = (int)($_POST['receiver_id'] ?? 0);
-        $content    = trim($_POST['content'] ?? '');
+        $content    = trim((string)($_POST['content'] ?? ''));
 
-        if ($receiverId < 1 || !$this->userModel->findById($receiverId)) {
-            if ($this->isAjax()) {
-                $this->json(['success' => false, 'error' => 'Usuario no válido.'], 400);
-            }
-            flash('messages', 'Usuario no válido.', 'danger');
-            redirect('/messages');
+        $receiver = $receiverId > 0 ? $this->userModel->findById($receiverId) : null;
+        if (!$receiver || !$receiver['active']) {
+            $this->fail('Usuario no válido.', '/messages');
         }
 
         if ($receiverId === $senderId) {
-            if ($this->isAjax()) {
-                $this->json(['success' => false, 'error' => 'No puedes enviarte mensajes a ti mismo.'], 400);
-            }
-            flash('messages', 'No puedes enviarte mensajes a ti mismo.', 'warning');
-            redirect('/messages');
+            $this->fail('No puedes enviarte mensajes a ti mismo.', '/messages');
         }
 
-        if (strlen($content) < 1 || strlen($content) > 1000) {
-            if ($this->isAjax()) {
-                $this->json(['success' => false, 'error' => 'El mensaje debe tener entre 1 y 1000 caracteres.'], 400);
-            }
-            flash('messages', 'El mensaje debe tener entre 1 y 1000 caracteres.', 'danger');
-            redirect('/messages/' . $receiverId);
+        if (mb_strlen($content) < 1 || mb_strlen($content) > 1000) {
+            $this->fail('El mensaje debe tener entre 1 y 1000 caracteres.', '/messages/' . $receiverId);
         }
 
         $messageId = $this->messageModel->send($senderId, $receiverId, $content);
+        $row       = $this->messageModel->findById($messageId);
+        $createdAt = $row['created_at'] ?? date('Y-m-d H:i:s');
 
         $this->notificationModel->create(
             $receiverId,
@@ -105,6 +103,8 @@ class MessageController
             $senderId
         );
 
+        RealtimeNotifier::messageCreated($messageId, $senderId, $receiverId, $content, $createdAt);
+
         PushHelper::sendNotification(
             [$receiverId],
             'Nuevo mensaje',
@@ -112,14 +112,13 @@ class MessageController
             '/messages/' . $senderId
         );
 
-        if ($this->isAjax()) {
-            $row = $this->messageModel->findById($messageId);
-            $this->json([
+        if (isAjax()) {
+            jsonResponse([
                 'success' => true,
                 'message' => [
                     'id'         => $messageId,
                     'content'    => $content,
-                    'created_at' => $row['created_at'] ?? date('Y-m-d H:i:s'),
+                    'created_at' => $createdAt,
                     'sender_id'  => $senderId,
                 ],
             ]);
@@ -128,16 +127,25 @@ class MessageController
         redirect('/messages/' . $receiverId);
     }
 
-    private function isAjax(): bool
+    /** El chat abierto avisa de que ha mostrado mensajes recibidos en vivo. */
+    public function markRead(): void
     {
-        return strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest';
+        verifyCsrf();
+
+        $otherUserId = (int)($_POST['other_user_id'] ?? 0);
+        if ($otherUserId > 0) {
+            $this->messageModel->markConversationRead((int)currentUser()['id'], $otherUserId);
+        }
+
+        jsonResponse(['success' => true]);
     }
 
-    private function json(array $data, int $code = 200): never
+    private function fail(string $error, string $redirectTo): never
     {
-        http_response_code($code);
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($data, JSON_UNESCAPED_UNICODE);
-        exit;
+        if (isAjax()) {
+            jsonResponse(['success' => false, 'error' => $error], 400);
+        }
+        flash('messages', $error, 'danger');
+        redirect($redirectTo);
     }
 }

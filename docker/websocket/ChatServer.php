@@ -5,66 +5,98 @@ declare(strict_types=1);
 use Ratchet\ConnectionInterface;
 use Ratchet\MessageComponentInterface;
 
+/**
+ * Servidor de chat en tiempo real.
+ *
+ * Solo EMPUJA mensajes del servidor al navegador. Los mensajes se envían siempre por HTTP
+ * (MessageController: sesión, CSRF, validación, notificación y push) y la web avisa a este
+ * proceso por un canal interno (ver server.php) para que los entregue en vivo.
+ *
+ * Autenticación: el navegador presenta un token firmado por la web con HMAC-SHA256 y
+ * APP_SECRET (ver wsToken() en app/helpers/functions.php). El user_id sale del token
+ * verificado, nunca de un dato que el cliente pueda inventar.
+ */
 class ChatServer implements MessageComponentInterface
 {
-    /** @var \SplObjectStorage<ConnectionInterface> */
+    /** @var \SplObjectStorage<ConnectionInterface, array{userId: int|null}> */
     private \SplObjectStorage $clients;
 
-    /** @var array<int, ConnectionInterface> */
+    /** @var array<int, \SplObjectStorage<ConnectionInterface, null>> user_id → conexiones (varias pestañas) */
     private array $userConnections = [];
 
-    /** @var array<int, int> resourceId => user_id */
-    private array $connectionUsers = [];
+    private string $secret;
 
-    private PDO $db;
+    /** @var string[] */
+    private array $allowedOrigins;
 
-    public function __construct()
+    private ?PDO $db = null;
+
+    public function __construct(string $secret, array $allowedOrigins)
     {
-        $this->clients = new \SplObjectStorage();
-        $this->db      = $this->createDatabase();
+        if ($secret === '') {
+            throw new RuntimeException('APP_SECRET no está definido: el servidor WebSocket no puede verificar tokens.');
+        }
+        $this->clients        = new \SplObjectStorage();
+        $this->secret         = $secret;
+        $this->allowedOrigins = $allowedOrigins;
     }
 
     public function onOpen(ConnectionInterface $conn): void
     {
-        $this->clients->attach($conn);
-        $conn->authenticated = false;
+        // Los navegadores no aplican la política del mismo origen a los WebSockets:
+        // se comprueba Origin para que otra web no pueda abrir conexiones (CSWSH).
+        $origin = $conn->httpRequest->getHeaderLine('Origin');
+        if ($this->allowedOrigins !== [] && !in_array($origin, $this->allowedOrigins, true)) {
+            $conn->close();
+
+            return;
+        }
+
+        $this->clients->attach($conn, ['userId' => null]);
     }
 
     public function onMessage(ConnectionInterface $from, $msg): void
     {
+        if (!$this->clients->contains($from)) {
+            return;
+        }
+
         $data = json_decode((string)$msg, true);
-        if (!is_array($data) || empty($data['type'])) {
-            return;
-        }
-
-        $type = (string)$data['type'];
-
-        if ($type === 'auth') {
-            $this->handleAuth($from, $data);
+        if (!is_array($data) || ($data['type'] ?? '') !== 'auth') {
+            $this->send($from, ['type' => 'error', 'message' => 'Solo se acepta el mensaje auth; los mensajes se envían por HTTP.']);
 
             return;
         }
 
-        if ($type === 'message') {
-            $this->handleMessage($from, $data);
+        $userId = $this->verifyToken((string)($data['token'] ?? ''));
+        if ($userId === null || !$this->userIsActive($userId)) {
+            $this->send($from, ['type' => 'auth_error']);
+            $from->close();
+
+            return;
         }
+
+        $this->clients[$from] = ['userId' => $userId];
+        $this->userConnections[$userId] ??= new \SplObjectStorage();
+        $this->userConnections[$userId]->attach($from);
+
+        $this->send($from, ['type' => 'auth_ok']);
     }
 
     public function onClose(ConnectionInterface $conn): void
     {
-        $resourceId = (int)$conn->resourceId;
+        if (!$this->clients->contains($conn)) {
+            return;
+        }
 
-        if (isset($this->connectionUsers[$resourceId])) {
-            $userId = $this->connectionUsers[$resourceId];
-            unset($this->connectionUsers[$resourceId]);
-
-            if (isset($this->userConnections[$userId])
-                && $this->userConnections[$userId] === $conn) {
+        $userId = $this->clients[$conn]['userId'];
+        if ($userId !== null && isset($this->userConnections[$userId])) {
+            $this->userConnections[$userId]->detach($conn);
+            if (count($this->userConnections[$userId]) === 0) {
                 unset($this->userConnections[$userId]);
             }
         }
 
-        $this->removeWsSession((string)$resourceId);
         $this->clients->detach($conn);
     }
 
@@ -74,161 +106,96 @@ class ChatServer implements MessageComponentInterface
         $conn->close();
     }
 
-    private function handleAuth(ConnectionInterface $conn, array $data): void
+    /**
+     * Entrega en vivo un mensaje ya guardado por la web (llamado desde el canal interno).
+     *
+     * @param array{receiver_id?: int, sender_id?: int, message_id?: int, content?: string, created_at?: string} $message
+     */
+    public function deliver(array $message): void
     {
-        $userId = (int)($data['user_id'] ?? 0);
-        if ($userId < 1 || !$this->userExists($userId)) {
-            $conn->send(json_encode(['type' => 'error', 'message' => 'Auth inválida']));
-
+        $receiverId = (int)($message['receiver_id'] ?? 0);
+        if ($receiverId < 1 || !isset($this->userConnections[$receiverId])) {
             return;
         }
 
-        $username = trim((string)($data['username'] ?? ''));
-        $avatar   = trim((string)($data['avatar'] ?? 'default.png'));
+        $payload = [
+            'type'       => 'message',
+            'message_id' => (int)($message['message_id'] ?? 0),
+            'sender_id'  => (int)($message['sender_id'] ?? 0),
+            'content'    => (string)($message['content'] ?? ''),
+            'created_at' => (string)($message['created_at'] ?? ''),
+        ];
 
-        $conn->authenticated = true;
-        $conn->userId        = $userId;
-        $conn->username      = $username !== '' ? $username : $this->fetchUsername($userId);
-        $conn->avatar        = $avatar !== '' ? $avatar : 'default.png';
-
-        $resourceId = (int)$conn->resourceId;
-        $this->connectionUsers[$resourceId] = $userId;
-        $this->userConnections[$userId]     = $conn;
-
-        $this->saveWsSession($userId, (string)$resourceId);
-
-        $conn->send(json_encode(['type' => 'auth_ok']));
-    }
-
-    private function handleMessage(ConnectionInterface $from, array $data): void
-    {
-        if (empty($from->authenticated) || empty($from->userId)) {
-            $from->send(json_encode(['type' => 'error', 'message' => 'No autenticado']));
-
-            return;
-        }
-
-        $senderId   = (int)$from->userId;
-        $receiverId = (int)($data['receiver_id'] ?? 0);
-        $content    = trim((string)($data['content'] ?? ''));
-
-        if ($receiverId < 1 || $receiverId === $senderId) {
-            $from->send(json_encode(['type' => 'error', 'message' => 'Destinatario no válido']));
-
-            return;
-        }
-
-        if (!$this->userExists($receiverId)) {
-            $from->send(json_encode(['type' => 'error', 'message' => 'Usuario no encontrado']));
-
-            return;
-        }
-
-        if (strlen($content) < 1 || strlen($content) > 1000) {
-            $from->send(json_encode(['type' => 'error', 'message' => 'Mensaje inválido']));
-
-            return;
-        }
-
-        $messageId  = $this->insertMessage($senderId, $receiverId, $content);
-        $createdAt  = $this->fetchMessageCreatedAt($messageId) ?? date('Y-m-d H:i:s');
-        $username   = (string)($from->username ?? '');
-        $avatar     = (string)($from->avatar ?? 'default.png');
-
-        $from->send(json_encode([
-            'type'       => 'sent',
-            'message_id' => $messageId,
-            'created_at' => $createdAt,
-        ], JSON_UNESCAPED_UNICODE));
-
-        if (isset($this->userConnections[$receiverId])) {
-            $receiverConn = $this->userConnections[$receiverId];
-            $this->markConversationRead($receiverId, $senderId);
-
-            $receiverConn->send(json_encode([
-                'type'       => 'message',
-                'message_id' => $messageId,
-                'sender_id'  => $senderId,
-                'username'   => $username,
-                'avatar'     => $avatar,
-                'content'    => $content,
-                'created_at' => $createdAt,
-            ], JSON_UNESCAPED_UNICODE));
+        foreach ($this->userConnections[$receiverId] as $conn) {
+            $this->send($conn, $payload);
         }
     }
 
-    private function insertMessage(int $senderId, int $receiverId, string $content): int
+    private function verifyToken(string $token): ?int
     {
-        $stmt = $this->db->prepare(
-            'INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)'
-        );
-        $stmt->execute([$senderId, $receiverId, $content]);
+        $parts = explode('.', $token);
+        if (count($parts) !== 3) {
+            return null;
+        }
+        [$userId, $expires, $signature] = $parts;
 
-        return (int)$this->db->lastInsertId();
+        if (!ctype_digit($userId) || !ctype_digit($expires) || (int)$expires < time()) {
+            return null;
+        }
+
+        $expected = hash_hmac('sha256', 'ws|' . $userId . '.' . $expires, $this->secret);
+
+        return hash_equals($expected, $signature) ? (int)$userId : null;
     }
 
-    private function fetchMessageCreatedAt(int $messageId): ?string
+    private function userIsActive(int $userId): bool
     {
-        $stmt = $this->db->prepare('SELECT created_at FROM messages WHERE id = ? LIMIT 1');
-        $stmt->execute([$messageId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        return $row['created_at'] ?? null;
-    }
-
-    private function markConversationRead(int $receiverId, int $senderId): void
-    {
-        $stmt = $this->db->prepare(
-            'UPDATE messages SET is_read = 1
-             WHERE receiver_id = ? AND sender_id = ? AND is_read = 0'
-        );
-        $stmt->execute([$receiverId, $senderId]);
-    }
-
-    private function userExists(int $userId): bool
-    {
-        $stmt = $this->db->prepare('SELECT id FROM users WHERE id = ? AND active = 1 LIMIT 1');
-        $stmt->execute([$userId]);
+        $stmt = $this->run('SELECT id FROM users WHERE id = ? AND active = 1 LIMIT 1', [$userId]);
 
         return (bool)$stmt->fetch();
     }
 
-    private function fetchUsername(int $userId): string
+    private function send(ConnectionInterface $conn, array $data): void
     {
-        $stmt = $this->db->prepare('SELECT username FROM users WHERE id = ? LIMIT 1');
-        $stmt->execute([$userId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        return $row['username'] ?? 'usuario';
+        $conn->send(json_encode($data, JSON_UNESCAPED_UNICODE));
     }
 
-    private function saveWsSession(int $userId, string $connId): void
+    /**
+     * Ejecuta una consulta reconectando una vez si MariaDB cerró la conexión
+     * (wait_timeout): este proceso vive días, no una petición.
+     */
+    private function run(string $sql, array $params): PDOStatement
     {
-        $stmt = $this->db->prepare(
-            'INSERT INTO ws_sessions (user_id, conn_id) VALUES (?, ?)'
-        );
-        $stmt->execute([$userId, $connId]);
+        try {
+            $stmt = $this->db()->prepare($sql);
+            $stmt->execute($params);
+
+            return $stmt;
+        } catch (PDOException $e) {
+            error_log('ChatServer: reconectando a la BD (' . $e->getMessage() . ')');
+            $this->db = null;
+            $stmt = $this->db()->prepare($sql);
+            $stmt->execute($params);
+
+            return $stmt;
+        }
     }
 
-    private function removeWsSession(string $connId): void
+    private function db(): PDO
     {
-        $stmt = $this->db->prepare('DELETE FROM ws_sessions WHERE conn_id = ?');
-        $stmt->execute([$connId]);
-    }
+        if ($this->db === null) {
+            $host = getenv('DB_HOST') ?: 'db';
+            $name = getenv('DB_NAME') ?: 'comunidad';
+            $user = getenv('DB_USER') ?: '';
+            $pass = getenv('DB_PASS') ?: '';
 
-    private function createDatabase(): PDO
-    {
-        $host = getenv('DB_HOST') ?: 'db';
-        $name = getenv('DB_NAME') ?: 'comunidad';
-        $user = getenv('DB_USER') ?: 'usuario';
-        $pass = getenv('DB_PASS') ?: 'password';
+            $this->db = new PDO("mysql:host={$host};dbname={$name};charset=utf8mb4", $user, $pass, [
+                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES   => false,
+            ]);
+        }
 
-        $dsn = "mysql:host={$host};dbname={$name};charset=utf8mb4";
-
-        return new PDO($dsn, $user, $pass, [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES   => false,
-        ]);
+        return $this->db;
     }
 }

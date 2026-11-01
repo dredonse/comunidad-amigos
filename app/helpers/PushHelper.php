@@ -19,9 +19,9 @@ class PushHelper
         ob_start();
 
         try {
-            $publicKey  = getenv('VAPID_PUBLIC_KEY') ?: ($_ENV['VAPID_PUBLIC_KEY'] ?? '');
-            $privateKey = getenv('VAPID_PRIVATE_KEY') ?: ($_ENV['VAPID_PRIVATE_KEY'] ?? '');
-            $subject    = getenv('VAPID_SUBJECT') ?: ($_ENV['VAPID_SUBJECT'] ?? 'mailto:admin@comunidad.local');
+            $publicKey  = env('VAPID_PUBLIC_KEY', '');
+            $privateKey = env('VAPID_PRIVATE_KEY', '');
+            $subject    = env('VAPID_SUBJECT', 'mailto:admin@comunidad.local');
 
             if ($publicKey === '' || $privateKey === '') {
                 return;

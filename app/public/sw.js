@@ -1,5 +1,12 @@
-const CACHE_NAME = 'comunidad-v1';
-const STATIC_URLS = ['/', '/feed', '/css/app.css', '/js/app.js', '/img/icon-192.png'];
+/* Service Worker de Comunidad de Amigos
+ *
+ * Caché SOLO de recursos estáticos y de una página "sin conexión" genérica.
+ * Las páginas HTML (feed, mensajes, administración…) nunca se guardan: contienen datos
+ * privados y seguirían en el navegador después de cerrar sesión.
+ */
+const CACHE_NAME = 'comunidad-static-v2';
+const STATIC_URLS = ['/offline.html', '/css/app.css', '/js/app.js', '/img/icon-192.png', '/img/default.svg'];
+const STATIC_PREFIXES = ['/css/', '/js/', '/img/'];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
@@ -8,25 +15,43 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil(self.clients.claim());
+    // Borra cachés de versiones anteriores (la v1 guardaba páginas privadas)
+    event.waitUntil(
+        caches.keys()
+            .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+            .then(() => self.clients.claim())
+    );
 });
 
 self.addEventListener('fetch', (event) => {
-    if (event.request.method !== 'GET') {
+    const request = event.request;
+    const url = new URL(request.url);
+
+    if (request.method !== 'GET' || url.origin !== self.location.origin) {
         return;
     }
 
-    event.respondWith(
-        fetch(event.request)
-            .then((response) => {
-                if (response && response.status === 200 && response.type === 'basic') {
-                    const clone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-                }
-                return response;
-            })
-            .catch(() => caches.match(event.request))
-    );
+    // Navegación: siempre la red; sin conexión, la página genérica
+    if (request.mode === 'navigate') {
+        event.respondWith(fetch(request).catch(() => caches.match('/offline.html')));
+        return;
+    }
+
+    // Estáticos: red primero, copia en caché como reserva
+    if (STATIC_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
+        event.respondWith(
+            fetch(request)
+                .then((response) => {
+                    if (response.ok) {
+                        const clone = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+                    }
+                    return response;
+                })
+                .catch(() => caches.match(request))
+        );
+    }
+    // Todo lo demás (uploads, peticiones AJAX…) va a la red sin pasar por la caché
 });
 
 self.addEventListener('push', (event) => {
@@ -53,8 +78,9 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
 
-    const rawUrl = event.notification.data?.url || '/feed';
-    const targetUrl = new URL(rawUrl, self.location.origin).href;
+    // Solo se abren URLs del propio sitio
+    const target = new URL(event.notification.data?.url || '/feed', self.location.origin);
+    const targetUrl = target.origin === self.location.origin ? target.href : self.location.origin + '/feed';
 
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
