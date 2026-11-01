@@ -134,18 +134,31 @@ class FriendModel
             'UPDATE friends SET status = \'accepted\'
              WHERE sender_id = ? AND receiver_id = ? AND status = \'pending\''
         );
+        $stmt->execute([$senderId, $userId]);
 
-        return $stmt->execute([$senderId, $userId]);
+        return $stmt->rowCount() > 0;
     }
 
+    /**
+     * Rechazar borra la solicitud. Antes quedaba una fila 'rejected' y, como sendRequest()
+     * no deja enviar si existe cualquier fila, ninguno de los dos podía volver a intentarlo.
+     */
     public function reject(int $userId, int $senderId): bool
     {
         $stmt = $this->db->prepare(
-            'UPDATE friends SET status = \'rejected\'
+            'DELETE FROM friends
              WHERE sender_id = ? AND receiver_id = ? AND status = \'pending\''
         );
+        $stmt->execute([$senderId, $userId]);
 
-        return $stmt->execute([$senderId, $userId]);
+        return $stmt->rowCount() > 0;
+    }
+
+    public function areFriends(int $userId, int $otherUserId): bool
+    {
+        $status = $this->getStatus($userId, $otherUserId);
+
+        return $status !== null && $status['status'] === 'accepted';
     }
 
     public function unfriend(int $userId, int $otherUserId): bool
@@ -156,6 +169,8 @@ class FriendModel
                 OR (sender_id = ? AND receiver_id = ?)'
         );
 
-        return $stmt->execute([$userId, $otherUserId, $otherUserId, $userId]);
+        $stmt->execute([$userId, $otherUserId, $otherUserId, $userId]);
+
+        return $stmt->rowCount() > 0;
     }
 }

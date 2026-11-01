@@ -47,7 +47,7 @@ class FeedController
         $user    = currentUser();
         $content = trim($_POST['content'] ?? '');
 
-        if (strlen($content) < 1 || strlen($content) > 2000) {
+        if (mb_strlen($content) < 1 || mb_strlen($content) > 2000) {
             flash('feed', 'El contenido debe tener entre 1 y 2000 caracteres.', 'danger');
             redirect('/feed');
         }
@@ -93,19 +93,12 @@ class FeedController
             redirect('/feed');
         }
 
-        if (!empty($post['image'])) {
-            $path = UPLOADS_PATH . '/posts/' . $post['image'];
-            if (is_file($path)) {
-                unlink($path);
-            }
-        }
-
         if ($isOwner) {
             $this->postModel->delete($postId, (int)$user['id']);
         } else {
-            $stmt = Database::getConnection()->prepare('DELETE FROM posts WHERE id = ?');
-            $stmt->execute([$postId]);
+            $this->postModel->deleteById($postId);
         }
+        deleteUpload('posts', $post['image'] ?? null);
 
         flash('feed', 'Publicación eliminada.');
         redirect('/feed');

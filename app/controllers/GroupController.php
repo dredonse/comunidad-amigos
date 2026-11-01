@@ -47,12 +47,12 @@ class GroupController
         $description = trim($_POST['description'] ?? '');
         $privacy     = $_POST['privacy'] ?? 'public';
 
-        if (strlen($name) < 3 || strlen($name) > 100) {
+        if (mb_strlen($name) < 3 || mb_strlen($name) > 100) {
             flash('groups', 'El nombre debe tener entre 3 y 100 caracteres.', 'danger');
             redirect('/groups/create');
         }
 
-        if (strlen($description) > 1000) {
+        if (mb_strlen($description) > 1000) {
             flash('groups', 'La descripción no puede superar 1000 caracteres.', 'danger');
             redirect('/groups/create');
         }
@@ -94,8 +94,10 @@ class GroupController
             return;
         }
 
-        $isMember = $this->groupModel->isMember($id, $userId);
-        $isAdmin  = $this->groupModel->isAdmin($id, $userId);
+        $isMember  = $this->groupModel->isMember($id, $userId);
+        $isPending = !$isMember && $this->groupModel->isPending($id, $userId);
+        $isAdmin   = $this->groupModel->isAdmin($id, $userId);
+        $pendingRequests = $isAdmin ? $this->groupModel->getPendingRequests($id) : [];
         $canViewPosts = $isMember || $group['privacy'] === 'public';
 
         $members = $this->groupModel->getMembers($id, 10);
@@ -134,34 +136,88 @@ class GroupController
             redirect('/groups');
         }
 
-        if ($this->groupModel->isMember($groupId, $userId)) {
-            flash('groups', 'Ya eres miembro de este grupo.', 'warning');
+        $isPrivate = $group['privacy'] === 'private';
+
+        // INSERT IGNORE + clave única: si ya eres miembro o ya lo solicitaste, no hace nada
+        if (!$this->groupModel->join($groupId, $userId, $isPrivate)) {
+            flash('groups', 'Ya eres miembro o tienes una solicitud pendiente.', 'warning');
             redirect('/groups/' . $groupId);
         }
 
-        if (!$this->groupModel->join($groupId, $userId)) {
-            flash('groups', 'No se pudo unir al grupo.', 'danger');
-            redirect('/groups/' . $groupId);
-        }
+        $adminIds = array_values(array_diff($this->groupModel->getAdminIds($groupId), [$userId]));
+        $text = $isPrivate
+            ? $user['username'] . ' quiere unirse al grupo «' . $group['name'] . '»'
+            : $user['username'] . ' se unió al grupo «' . $group['name'] . '»';
 
-        if ((int)$group['creator_id'] !== $userId) {
+        foreach ($adminIds as $adminId) {
+            $this->notificationModel->create($adminId, 'group', $text, $groupId);
+        }
+        PushHelper::sendNotification(
+            $adminIds,
+            $isPrivate ? 'Solicitud para unirse al grupo' : 'Nuevo miembro en el grupo',
+            '@' . $text,
+            '/groups/' . $groupId
+        );
+
+        flash('groups', $isPrivate
+            ? 'Solicitud enviada. Un administrador del grupo debe aprobarla.'
+            : 'Te has unido al grupo.');
+        redirect('/groups/' . $groupId);
+    }
+
+    public function approve(): void
+    {
+        verifyCsrf();
+        [$groupId, $memberId, $group] = $this->requireGroupAdminAction();
+
+        if ($this->groupModel->approve($groupId, $memberId)) {
             $this->notificationModel->create(
-                (int)$group['creator_id'],
+                $memberId,
                 'group',
-                $user['username'] . ' se unió al grupo «' . $group['name'] . '»',
+                'Te han aceptado en el grupo «' . $group['name'] . '»',
                 $groupId
             );
-
             PushHelper::sendNotification(
-                [(int)$group['creator_id']],
-                'Nuevo miembro en el grupo',
-                '@' . $user['username'] . ' se unió al grupo «' . $group['name'] . '»',
+                [$memberId],
+                'Solicitud aceptada',
+                'Ya eres miembro del grupo «' . $group['name'] . '»',
                 '/groups/' . $groupId
             );
+            flash('groups', 'Solicitud aprobada.');
+        } else {
+            flash('groups', 'La solicitud ya no existe.', 'warning');
+        }
+        redirect('/groups/' . $groupId);
+    }
+
+    public function rejectRequest(): void
+    {
+        verifyCsrf();
+        [$groupId, $memberId] = $this->requireGroupAdminAction();
+
+        $this->groupModel->rejectRequest($groupId, $memberId);
+        flash('groups', 'Solicitud rechazada.');
+        redirect('/groups/' . $groupId);
+    }
+
+    /** Solo un administrador del grupo puede aprobar o rechazar solicitudes. */
+    private function requireGroupAdminAction(): array
+    {
+        $userId   = (int)currentUser()['id'];
+        $groupId  = (int)($_POST['group_id'] ?? 0);
+        $memberId = (int)($_POST['user_id'] ?? 0);
+
+        $group = $this->groupModel->findById($groupId);
+        if (!$group || $memberId < 1) {
+            flash('groups', 'Solicitud no válida.', 'danger');
+            redirect('/groups');
+        }
+        if (!$this->groupModel->isAdmin($groupId, $userId)) {
+            flash('groups', 'Solo los administradores del grupo pueden gestionar solicitudes.', 'danger');
+            redirect('/groups/' . $groupId);
         }
 
-        flash('groups', 'Te has unido al grupo.');
-        redirect('/groups/' . $groupId);
+        return [$groupId, $memberId, $group];
     }
 
     public function leave(): void
@@ -194,7 +250,7 @@ class GroupController
             redirect('/groups/' . $groupId);
         }
 
-        if (strlen($content) < 1 || strlen($content) > 2000) {
+        if (mb_strlen($content) < 1 || mb_strlen($content) > 2000) {
             flash('groups', 'El contenido debe tener entre 1 y 2000 caracteres.', 'danger');
             redirect('/groups/' . $groupId);
         }
@@ -242,38 +298,30 @@ class GroupController
         $comment = trim($_POST['comment'] ?? '');
 
         if ($postId < 1) {
-            $this->json(['success' => false, 'error' => 'Publicación no válida.'], 400);
+            jsonResponse(['success' => false, 'error' => 'Publicación no válida.'], 400);
         }
 
-        if (strlen($comment) < 1 || strlen($comment) > 1000) {
-            $this->json(['success' => false, 'error' => 'El comentario debe tener entre 1 y 1000 caracteres.'], 400);
+        if (mb_strlen($comment) < 1 || mb_strlen($comment) > 1000) {
+            jsonResponse(['success' => false, 'error' => 'El comentario debe tener entre 1 y 1000 caracteres.'], 400);
         }
 
         $post = $this->groupModel->findPostById($postId);
         if (!$post) {
-            $this->json(['success' => false, 'error' => 'La publicación no existe.'], 404);
+            jsonResponse(['success' => false, 'error' => 'La publicación no existe.'], 404);
         }
 
         $groupId = (int)$post['group_id'];
         if (!$this->groupModel->isMember($groupId, $userId)) {
-            $this->json(['success' => false, 'error' => 'Debes ser miembro para comentar.'], 403);
+            jsonResponse(['success' => false, 'error' => 'Debes ser miembro para comentar.'], 403);
         }
 
         $this->groupModel->addComment($postId, $userId, $comment);
 
-        $this->json([
+        jsonResponse([
             'success'  => true,
             'username' => $user['username'],
             'avatar'   => $user['avatar'],
             'comment'  => $comment,
         ]);
-    }
-
-    private function json(array $data, int $code = 200): never
-    {
-        http_response_code($code);
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($data, JSON_UNESCAPED_UNICODE);
-        exit;
     }
 }

@@ -15,9 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
     bio         TEXT,
     role        ENUM('user','admin') DEFAULT 'user',
     active      TINYINT(1) DEFAULT 1,
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_username (username),
-    INDEX idx_email (email)
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Publicaciones
@@ -49,7 +47,7 @@ CREATE TABLE IF NOT EXISTS friends (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     sender_id   INT UNSIGNED NOT NULL,
     receiver_id INT UNSIGNED NOT NULL,
-    status      ENUM('pending','accepted','rejected') DEFAULT 'pending',
+    status      ENUM('pending','accepted','rejected') DEFAULT 'pending',  -- rechazar borra la fila
     created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -141,6 +139,7 @@ CREATE TABLE IF NOT EXISTS group_members (
     group_id   INT UNSIGNED NOT NULL,
     user_id    INT UNSIGNED NOT NULL,
     role       ENUM('admin','member') DEFAULT 'member',
+    status     ENUM('approved','pending') NOT NULL DEFAULT 'approved',  -- 'pending': solicitud a un grupo privado
     joined_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (group_id) REFERENCES `groups`(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id)  REFERENCES users(id)  ON DELETE CASCADE,
@@ -183,20 +182,5 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
     UNIQUE KEY unique_endpoint (user_id, auth)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Sesiones WebSocket (Ratchet)
-CREATE TABLE IF NOT EXISTS ws_sessions (
-    id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    user_id    INT UNSIGNED NOT NULL,
-    conn_id    VARCHAR(100) NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_user_id (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Usuario admin por defecto (password: Admin1234!)
-INSERT INTO users (username, email, password, role) VALUES (
-    'admin',
-    'admin@comunidad.local',
-    '$2b$12$Pa.KxtPSDuqoY8iYP/BCzeRsxf.tPsC3RpBoWeWosK.9Ts3La5T.y',
-    'admin'
-);
+-- No se crea ningún usuario por defecto: el primer administrador se crea con
+--   docker compose exec web php bin/create-admin.php

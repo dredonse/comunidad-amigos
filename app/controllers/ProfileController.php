@@ -31,24 +31,33 @@ class ProfileController
 
         $isOwner = $profileId === $currentId;
 
+        $friendStatus = $isOwner ? null : $this->friendModel->getStatus($currentId, $profileId);
+
+        // Coherente con el feed: las publicaciones solo las ven el dueño, sus amigos y los admins
+        $canViewPosts = $isOwner
+            || ($currentUser['role'] ?? '') === 'admin'
+            || ($friendStatus !== null && $friendStatus['status'] === 'accepted');
+
         $page    = max(1, (int)($_GET['page'] ?? 1));
         $perPage = 10;
         $total   = $this->postModel->countByUser($profileId);
-        $pag     = paginate($total, $perPage, $page);
+        $pag     = paginate($canViewPosts ? $total : 0, $perPage, $page);
+        $posts   = [];
 
-        $posts = $this->postModel->getByUser(
-            $profileId,
-            $currentId,
-            $pag['perPage'],
-            $pag['offset']
-        );
+        if ($canViewPosts) {
+            $posts = $this->postModel->getByUser(
+                $profileId,
+                $currentId,
+                $pag['perPage'],
+                $pag['offset']
+            );
 
-        foreach ($posts as &$post) {
-            $post['comments'] = $this->postModel->getComments((int)$post['id'], 3);
+            foreach ($posts as &$post) {
+                $post['comments'] = $this->postModel->getComments((int)$post['id'], 3);
+            }
+            unset($post);
         }
-        unset($post);
 
-        $friendStatus = $isOwner ? null : $this->friendModel->getStatus($currentId, $profileId);
         $friendCount  = count($this->friendModel->getFriends($profileId));
         $postCount    = $total;
 
@@ -69,7 +78,7 @@ class ProfileController
         }
 
         $bio = trim($_POST['bio'] ?? '');
-        if (strlen($bio) > 300) {
+        if (mb_strlen($bio) > 300) {
             flash('profile', 'La biografía no puede superar 300 caracteres.', 'danger');
             redirect('/profile');
         }
@@ -83,13 +92,7 @@ class ProfileController
                 redirect('/profile');
             }
 
-            $oldAvatar = $user['avatar'] ?? 'default.png';
-            if ($oldAvatar !== 'default.png') {
-                $oldPath = UPLOADS_PATH . '/avatars/' . $oldAvatar;
-                if (is_file($oldPath)) {
-                    unlink($oldPath);
-                }
-            }
+            deleteUpload('avatars', $user['avatar'] ?? null);
 
             $this->userModel->updateAvatar($userId, $newAvatar);
             $_SESSION['avatar'] = $newAvatar;

@@ -54,6 +54,8 @@ $routes = [
     ['POST', '/groups/store',        'GroupController', 'store'],
     ['POST', '/groups/join',         'GroupController', 'join'],
     ['POST', '/groups/leave',        'GroupController', 'leave'],
+    ['POST', '/groups/approve',      'GroupController', 'approve'],
+    ['POST', '/groups/reject',       'GroupController', 'rejectRequest'],
     ['POST', '/groups/post',         'GroupController', 'addPost'],
     ['POST', '/groups/post/delete',  'GroupController', 'deletePost'],
     ['GET',  '/groups/(\d+)',        'GroupController', 'show'],

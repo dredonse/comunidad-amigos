@@ -201,7 +201,11 @@ require_once VIEWS_PATH . '/layout/header.php';
         <div class="card text-center py-5">
             <div class="card-body text-muted">
                 <i class="bi bi-journal-text" style="font-size:2.5rem"></i>
-                <p class="mt-3 mb-0">Aún no hay publicaciones.</p>
+                <p class="mt-3 mb-0">
+                    <?= $canViewPosts
+                        ? 'Aún no hay publicaciones.'
+                        : 'Solo sus amigos pueden ver sus publicaciones.' ?>
+                </p>
             </div>
         </div>
         <?php else: ?>

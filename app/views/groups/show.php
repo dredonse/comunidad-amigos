@@ -39,7 +39,9 @@ require_once VIEWS_PATH . '/layout/header.php';
 
         <?php if (!$canViewPosts): ?>
         <div class="alert alert-info">
-            Este grupo es privado. Únete para ver las publicaciones.
+            <?= $isPending
+                ? 'Tu solicitud está pendiente. Verás las publicaciones cuando un administrador la apruebe.'
+                : 'Este grupo es privado. Solicita unirte para ver las publicaciones.' ?>
         </div>
         <?php else: ?>
 
@@ -178,12 +180,17 @@ require_once VIEWS_PATH . '/layout/header.php';
     <div class="col-lg-4">
         <div class="card sidebar-card">
             <div class="card-body d-grid gap-2">
-                <?php if (!$isMember): ?>
+                <?php if ($isPending): ?>
+                <button type="button" class="btn btn-outline-secondary w-100" disabled>
+                    <i class="bi bi-hourglass-split me-1"></i> Solicitud pendiente
+                </button>
+                <?php elseif (!$isMember): ?>
                 <form method="POST" action="<?= url('groups/join') ?>">
                     <?= csrfField() ?>
                     <input type="hidden" name="group_id" value="<?= $groupId ?>">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-person-plus me-1"></i> Unirse al grupo
+                        <i class="bi bi-person-plus me-1"></i>
+                        <?= $group['privacy'] === 'private' ? 'Solicitar unirse' : 'Unirse al grupo' ?>
                     </button>
                 </form>
                 <?php else: ?>
@@ -201,15 +208,46 @@ require_once VIEWS_PATH . '/layout/header.php';
                         Eres el único administrador; no puedes abandonar el grupo.
                     </p>
                     <?php endif; ?>
-                    <?php if ($isAdmin): ?>
-                    <span class="text-muted small text-center">
-                        <!-- TODO: gestión avanzada del grupo -->
-                        <i class="bi bi-gear me-1"></i> Gestionar grupo (próximamente)
-                    </span>
-                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>
+
+        <?php if ($isAdmin && !empty($pendingRequests)): ?>
+        <div class="card sidebar-card mt-3">
+            <div class="card-header bg-white fw-semibold">
+                Solicitudes pendientes (<?= count($pendingRequests) ?>)
+            </div>
+            <ul class="list-group list-group-flush">
+                <?php foreach ($pendingRequests as $req): ?>
+                <li class="list-group-item d-flex align-items-center gap-2">
+                    <img src="<?= avatarUrl($req['avatar'] ?? null) ?>"
+                         class="rounded-circle" width="32" height="32" alt=""
+                         onerror="this.src='<?= url('img/default.svg') ?>'">
+                    <a href="<?= url('profile/' . (int)$req['user_id']) ?>"
+                       class="text-decoration-none flex-grow-1">
+                        <?= e($req['username']) ?>
+                    </a>
+                    <form method="POST" action="<?= url('groups/approve') ?>" class="m-0">
+                        <?= csrfField() ?>
+                        <input type="hidden" name="group_id" value="<?= $groupId ?>">
+                        <input type="hidden" name="user_id" value="<?= (int)$req['user_id'] ?>">
+                        <button type="submit" class="btn btn-sm btn-success" title="Aprobar">
+                            <i class="bi bi-check-lg"></i>
+                        </button>
+                    </form>
+                    <form method="POST" action="<?= url('groups/reject') ?>" class="m-0">
+                        <?= csrfField() ?>
+                        <input type="hidden" name="group_id" value="<?= $groupId ?>">
+                        <input type="hidden" name="user_id" value="<?= (int)$req['user_id'] ?>">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Rechazar">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </form>
+                </li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+        <?php endif; ?>
 
         <div class="card sidebar-card mt-3">
             <div class="card-header bg-white fw-semibold">Miembros</div>

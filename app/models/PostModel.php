@@ -148,6 +148,14 @@ class PostModel
         return $stmt->execute([$id, $userId]);
     }
 
+    /** Borrado sin comprobar autor: solo para administradores (lo decide el controlador). */
+    public function deleteById(int $id): bool
+    {
+        $stmt = $this->db->prepare('DELETE FROM posts WHERE id = ?');
+
+        return $stmt->execute([$id]);
+    }
+
     // ── Comentarios ─────────────────────────────────────────────
 
     public function getComments(int $postId, int $limit = 3): array
@@ -178,25 +186,19 @@ class PostModel
 
     // ── Likes ───────────────────────────────────────────────────
 
+    /**
+     * Da o quita el like en una sola sentencia que decide la BD (clave única post_id+user_id):
+     * con "SELECT y luego INSERT", dos clics simultáneos acababan en un error 500.
+     */
     public function toggleLike(int $postId, int $userId): array
     {
-        $check = $this->db->prepare(
-            'SELECT id FROM likes WHERE post_id = ? AND user_id = ? LIMIT 1'
-        );
-        $check->execute([$postId, $userId]);
+        $ins = $this->db->prepare('INSERT IGNORE INTO likes (post_id, user_id) VALUES (?, ?)');
+        $ins->execute([$postId, $userId]);
+        $liked = $ins->rowCount() > 0;
 
-        if ($check->fetch()) {
-            $del = $this->db->prepare(
-                'DELETE FROM likes WHERE post_id = ? AND user_id = ?'
-            );
+        if (!$liked) {
+            $del = $this->db->prepare('DELETE FROM likes WHERE post_id = ? AND user_id = ?');
             $del->execute([$postId, $userId]);
-            $liked = false;
-        } else {
-            $ins = $this->db->prepare(
-                'INSERT INTO likes (post_id, user_id) VALUES (?, ?)'
-            );
-            $ins->execute([$postId, $userId]);
-            $liked = true;
         }
 
         $countStmt = $this->db->prepare(

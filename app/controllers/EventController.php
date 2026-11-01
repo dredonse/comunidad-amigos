@@ -74,17 +74,17 @@ class EventController
             redirect('/events/create');
         }
 
-        if (strlen($title) < 3 || strlen($title) > 200) {
+        if (mb_strlen($title) < 3 || mb_strlen($title) > 200) {
             flash('events', 'El título debe tener entre 3 y 200 caracteres.', 'danger');
             redirect('/events/create');
         }
 
-        if (strlen($description) > 2000) {
+        if (mb_strlen($description) > 2000) {
             flash('events', 'La descripción no puede superar 2000 caracteres.', 'danger');
             redirect('/events/create');
         }
 
-        if (strlen($location) > 255) {
+        if (mb_strlen($location) > 255) {
             flash('events', 'La ubicación no puede superar 255 caracteres.', 'danger');
             redirect('/events/create');
         }
@@ -190,14 +190,8 @@ class EventController
             redirect('/events/' . $eventId);
         }
 
-        if (!empty($event['image'])) {
-            $path = UPLOADS_PATH . '/events/' . $event['image'];
-            if (is_file($path)) {
-                unlink($path);
-            }
-        }
-
         $this->eventModel->delete($eventId, (int)$user['id'], $isAdmin);
+        deleteUpload('events', $event['image'] ?? null);
 
         flash('events', 'Evento eliminado.');
         redirect('/events');

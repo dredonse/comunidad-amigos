@@ -60,10 +60,15 @@ class AdminController
             redirect('/admin/users');
         }
 
+        if ($user['role'] === 'admin') {
+            flash('admin', 'No se puede desactivar a otro administrador.', 'warning');
+            redirect('/admin/users');
+        }
+
         $this->userModel->toggleActive($userId);
 
         $label = $user['active'] ? 'desactivado' : 'activado';
-        flash('admin', 'Usuario ' . e($user['username']) . ' ' . $label . ' correctamente.');
+        flash('admin', 'Usuario ' . $user['username'] . ' ' . $label . ' correctamente.');
         redirect('/admin/users');
     }
 
@@ -105,7 +110,7 @@ class AdminController
         }
 
         if (!$this->adminModel->deleteUser($userId, $adminId)) {
-            flash('admin', 'No se pudo eliminar el usuario.', 'danger');
+            flash('admin', 'No se pudo eliminar el usuario (los administradores no se pueden borrar).', 'danger');
             redirect('/admin/users');
         }
 

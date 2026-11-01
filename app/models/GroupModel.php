@@ -19,10 +19,10 @@ class GroupModel
                        g.privacy, g.created_at,
                        u.username AS creator_username,
                        (SELECT COUNT(*) FROM group_members gm
-                        WHERE gm.group_id = g.id) AS member_count,
+                        WHERE gm.group_id = g.id AND gm.status = \'approved\') AS member_count,
                        EXISTS(
                            SELECT 1 FROM group_members gm
-                           WHERE gm.group_id = g.id AND gm.user_id = ?
+                           WHERE gm.group_id = g.id AND gm.user_id = ? AND gm.status = \'approved\'
                        ) AS is_member
                 FROM `groups` g
                 INNER JOIN users u ON u.id = g.creator_id
@@ -53,7 +53,7 @@ class GroupModel
                     g.privacy, g.created_at,
                     u.username AS creator_username, u.avatar AS creator_avatar,
                     (SELECT COUNT(*) FROM group_members gm
-                     WHERE gm.group_id = g.id) AS member_count
+                     WHERE gm.group_id = g.id AND gm.status = \'approved\') AS member_count
              FROM `groups` g
              INNER JOIN users u ON u.id = g.creator_id
              WHERE g.id = ?
@@ -114,7 +114,7 @@ class GroupModel
             'SELECT g.id, g.name, g.avatar
              FROM `groups` g
              INNER JOIN group_members gm ON gm.group_id = g.id
-             WHERE gm.user_id = ?
+             WHERE gm.user_id = ? AND gm.status = \'approved\'
              ORDER BY g.name ASC'
         );
         $stmt->execute([$userId]);
@@ -131,7 +131,7 @@ class GroupModel
                     u.username, u.avatar
              FROM group_members gm
              INNER JOIN users u ON u.id = gm.user_id
-             WHERE gm.group_id = ?
+             WHERE gm.group_id = ? AND gm.status = \'approved\'
              ORDER BY gm.role ASC, gm.joined_at ASC
              LIMIT ?'
         );
@@ -144,7 +144,18 @@ class GroupModel
     {
         $stmt = $this->db->prepare(
             'SELECT id FROM group_members
-             WHERE group_id = ? AND user_id = ? LIMIT 1'
+             WHERE group_id = ? AND user_id = ? AND status = \'approved\' LIMIT 1'
+        );
+        $stmt->execute([$groupId, $userId]);
+
+        return (bool)$stmt->fetch();
+    }
+
+    public function isPending(int $groupId, int $userId): bool
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id FROM group_members
+             WHERE group_id = ? AND user_id = ? AND status = \'pending\' LIMIT 1'
         );
         $stmt->execute([$groupId, $userId]);
 
@@ -155,7 +166,7 @@ class GroupModel
     {
         $stmt = $this->db->prepare(
             'SELECT id FROM group_members
-             WHERE group_id = ? AND user_id = ? AND role = \'admin\' LIMIT 1'
+             WHERE group_id = ? AND user_id = ? AND role = \'admin\' AND status = \'approved\' LIMIT 1'
         );
         $stmt->execute([$groupId, $userId]);
 
@@ -166,20 +177,72 @@ class GroupModel
     {
         $stmt = $this->db->prepare(
             'SELECT COUNT(*) FROM group_members
-             WHERE group_id = ? AND role = \'admin\''
+             WHERE group_id = ? AND role = \'admin\' AND status = \'approved\''
         );
         $stmt->execute([$groupId]);
 
         return (int)$stmt->fetchColumn();
     }
 
-    public function join(int $groupId, int $userId): bool
+    /**
+     * Grupo público: entra directamente. Grupo privado: queda como solicitud pendiente
+     * que debe aprobar un administrador del grupo.
+     */
+    public function join(int $groupId, int $userId, bool $needsApproval): bool
     {
         $stmt = $this->db->prepare(
-            'INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, \'member\')'
+            'INSERT IGNORE INTO group_members (group_id, user_id, role, status) VALUES (?, ?, \'member\', ?)'
         );
+        $stmt->execute([$groupId, $userId, $needsApproval ? 'pending' : 'approved']);
 
-        return $stmt->execute([$groupId, $userId]);
+        return $stmt->rowCount() > 0;
+    }
+
+    public function getPendingRequests(int $groupId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT gm.user_id, gm.joined_at AS requested_at, u.username, u.avatar
+             FROM group_members gm
+             INNER JOIN users u ON u.id = gm.user_id
+             WHERE gm.group_id = ? AND gm.status = \'pending\'
+             ORDER BY gm.joined_at ASC'
+        );
+        $stmt->execute([$groupId]);
+
+        return $stmt->fetchAll();
+    }
+
+    public function approve(int $groupId, int $userId): bool
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE group_members SET status = \'approved\', joined_at = CURRENT_TIMESTAMP
+             WHERE group_id = ? AND user_id = ? AND status = \'pending\''
+        );
+        $stmt->execute([$groupId, $userId]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    public function rejectRequest(int $groupId, int $userId): bool
+    {
+        $stmt = $this->db->prepare(
+            'DELETE FROM group_members WHERE group_id = ? AND user_id = ? AND status = \'pending\''
+        );
+        $stmt->execute([$groupId, $userId]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    /** @return int[] */
+    public function getAdminIds(int $groupId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT user_id FROM group_members
+             WHERE group_id = ? AND role = \'admin\' AND status = \'approved\''
+        );
+        $stmt->execute([$groupId]);
+
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
     public function leave(int $groupId, int $userId): bool
@@ -261,16 +324,11 @@ class GroupModel
             return false;
         }
 
-        if (!empty($post['image'])) {
-            $path = UPLOADS_PATH . '/groups/' . $post['image'];
-            if (is_file($path)) {
-                unlink($path);
-            }
-        }
-
         $stmt = $this->db->prepare('DELETE FROM group_posts WHERE id = ?');
+        $ok   = $stmt->execute([$postId]);
+        deleteUpload('groups', $post['image'] ?? null);
 
-        return $stmt->execute([$postId]);
+        return $ok;
     }
 
     // ── Comentarios ─────────────────────────────────────────────

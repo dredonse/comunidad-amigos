@@ -91,26 +91,55 @@ class AdminModel
             return false;
         }
 
-        if (!empty($post['image'])) {
-            $path = UPLOADS_PATH . '/posts/' . $post['image'];
-            if (is_file($path)) {
-                unlink($path);
-            }
-        }
-
         $del = $this->db->prepare('DELETE FROM posts WHERE id = ?');
+        $ok  = $del->execute([$postId]);
+        deleteUpload('posts', $post['image'] ?? null);
 
-        return $del->execute([$postId]);
+        return $ok;
     }
 
+    /**
+     * Borra un usuario (no administradores). ON DELETE CASCADE borra sus filas en la BD,
+     * pero la BD no sabe nada de los ficheros: se recogen antes sus imágenes y se borran después.
+     */
     public function deleteUser(int $userId, int $adminId): bool
     {
         if ($userId === $adminId) {
             return false;
         }
 
-        $stmt = $this->db->prepare('DELETE FROM users WHERE id = ?');
+        $stmt = $this->db->prepare('SELECT avatar, role FROM users WHERE id = ? LIMIT 1');
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch();
+        if (!$user || $user['role'] === 'admin') {
+            return false;
+        }
 
-        return $stmt->execute([$userId]);
+        $files = [['avatars', $user['avatar']]];
+        foreach ([
+            ['posts',  'SELECT image FROM posts WHERE user_id = ? AND image IS NOT NULL'],
+            ['events', 'SELECT image FROM events WHERE creator_id = ? AND image IS NOT NULL'],
+            ['groups', 'SELECT gp.image FROM group_posts gp
+                        LEFT JOIN `groups` g ON g.id = gp.group_id
+                        WHERE (gp.user_id = ? OR g.creator_id = ?) AND gp.image IS NOT NULL'],
+            ['groups', 'SELECT avatar FROM `groups` WHERE creator_id = ?'],
+        ] as [$subdir, $sql]) {
+            $q = $this->db->prepare($sql);
+            $q->execute(array_fill(0, substr_count($sql, '?'), $userId));
+            foreach ($q->fetchAll(PDO::FETCH_COLUMN) as $file) {
+                $files[] = [$subdir, $file];
+            }
+        }
+
+        $del = $this->db->prepare('DELETE FROM users WHERE id = ?');
+        if (!$del->execute([$userId])) {
+            return false;
+        }
+
+        foreach ($files as [$subdir, $file]) {
+            deleteUpload($subdir, $file);
+        }
+
+        return true;
     }
 }

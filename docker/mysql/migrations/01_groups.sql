@@ -1,7 +1,7 @@
 -- ============================================
 -- Comunidad de Amigos - Tablas de grupos
 -- Ejecutar en BD existente (init.sql solo corre al crear el volumen):
--- docker exec -i comunidad_db mariadb -u USUARIO -pCONTRASEÑA NOMBRE_BD < docker/mysql/groups.sql
+-- docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"' < docker/mysql/migrations/01_groups.sql
 -- ============================================
 
 SET NAMES utf8mb4;
