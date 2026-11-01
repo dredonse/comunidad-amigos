@@ -67,7 +67,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                 <a href="<?= url('profile/' . (int)$att['user_id']) ?>" title="<?= e($att['username']) ?>">
                     <img src="<?= avatarUrl($att['avatar'] ?? 'default.png') ?>"
                          class="rounded-circle border" width="40" height="40" alt=""
-                         onerror="this.src='<?= url('img/default.svg') ?>'">
+                         onerror="this.onerror=null; this.src='/img/default.svg'">
                 </a>
                 <?php endforeach; ?>
                 <?php if (count($goingAttendees) > 12): ?>
@@ -141,7 +141,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                     <li class="list-group-item d-flex align-items-center gap-2">
                         <img src="<?= avatarUrl($att['avatar'] ?? 'default.png') ?>"
                              class="rounded-circle" width="32" height="32" alt=""
-                             onerror="this.src='<?= url('img/default.svg') ?>'">
+                             onerror="this.onerror=null; this.src='/img/default.svg'">
                         <a href="<?= url('profile/' . (int)$att['user_id']) ?>"
                            class="text-decoration-none">
                             <?= e($att['username']) ?>
@@ -162,7 +162,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                 <li class="list-group-item d-flex align-items-center gap-2">
                     <img src="<?= avatarUrl($att['avatar'] ?? 'default.png') ?>"
                          class="rounded-circle" width="32" height="32" alt=""
-                         onerror="this.src='<?= url('img/default.svg') ?>'">
+                         onerror="this.onerror=null; this.src='/img/default.svg'">
                     <a href="<?= url('profile/' . (int)$att['user_id']) ?>"
                        class="text-decoration-none">
                         <?= e($att['username']) ?>

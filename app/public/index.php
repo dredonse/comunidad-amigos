@@ -17,8 +17,7 @@ $routes = [
     // Auth
     ['GET',  '/login',    'AuthController', 'showLogin'],
     ['POST', '/login',    'AuthController', 'login'],
-    ['GET',  '/register', 'AuthController', 'showRegister'],
-    ['POST', '/register', 'AuthController', 'register'],
+    // Sin registro público: las cuentas las crea un administrador (/admin/users)
     ['POST', '/logout',   'AuthController', 'logout'],
 
     // Feed principal
@@ -26,6 +25,7 @@ $routes = [
     ['GET',  '/',         'FeedController', 'index'],
     ['POST', '/post',     'FeedController', 'store'],
     ['POST', '/post/delete', 'FeedController', 'delete'],
+    ['GET',  '/ajax/feed/new', 'FeedController', 'newPosts'],
 
     // Perfil
     ['GET',  '/profile',        'ProfileController', 'show'],
@@ -54,8 +54,9 @@ $routes = [
     ['POST', '/groups/store',        'GroupController', 'store'],
     ['POST', '/groups/join',         'GroupController', 'join'],
     ['POST', '/groups/leave',        'GroupController', 'leave'],
-    ['POST', '/groups/approve',      'GroupController', 'approve'],
-    ['POST', '/groups/reject',       'GroupController', 'rejectRequest'],
+    ['POST', '/groups/invite',         'GroupController', 'invite'],
+    ['POST', '/groups/invite/accept',  'GroupController', 'acceptInvite'],
+    ['POST', '/groups/invite/remove',  'GroupController', 'removeInvite'],
     ['POST', '/groups/post',         'GroupController', 'addPost'],
     ['POST', '/groups/post/delete',  'GroupController', 'deletePost'],
     ['GET',  '/groups/(\d+)',        'GroupController', 'show'],
@@ -75,11 +76,20 @@ $routes = [
     ['POST', '/push/unsubscribe', 'PushController', 'unsubscribe'],
 
     // Admin
-    ['GET',  '/admin',               'AdminController', 'index'],
-    ['GET',  '/admin/users',         'AdminController', 'users'],
-    ['POST', '/admin/user/toggle',   'AdminController', 'toggleUser'],
-    ['POST', '/admin/user/delete',   'AdminController', 'deleteUser'],
-    ['POST', '/admin/post/delete',   'AdminController', 'deletePost'],
+    ['GET',  '/admin',                 'AdminController', 'index'],
+    ['GET',  '/admin/users',           'AdminController', 'users'],
+    ['GET',  '/admin/posts',           'AdminController', 'posts'],
+    ['GET',  '/admin/comments',        'AdminController', 'comments'],
+    ['GET',  '/admin/events',          'AdminController', 'events'],
+    ['GET',  '/admin/groups',          'AdminController', 'groups'],
+    ['POST', '/admin/user/create',     'AdminController', 'createUser'],
+    ['POST', '/admin/user/toggle',     'AdminController', 'toggleUser'],
+    ['POST', '/admin/user/delete',     'AdminController', 'deleteUser'],
+    ['POST', '/admin/post/delete',     'AdminController', 'deletePost'],
+    ['POST', '/admin/comment/delete',  'AdminController', 'deleteComment'],
+    ['POST', '/admin/event/delete',    'AdminController', 'deleteEvent'],
+    ['POST', '/admin/group/delete',    'AdminController', 'deleteGroup'],
+    ['POST', '/admin/group/toggle-privacy', 'AdminController', 'toggleGroupPrivacy'],
 
     // AJAX - Comentarios y likes
     ['POST', '/ajax/comment',       'CommentController', 'store'],

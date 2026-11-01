@@ -19,7 +19,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                         <img src="<?= avatarUrl($request['avatar'] ?? 'default.png') ?>"
                              class="avatar rounded-circle flex-shrink-0"
                              width="56" height="56" alt="<?= e($request['username']) ?>"
-                             onerror="this.src='<?= url('img/default.svg') ?>'">
+                             onerror="this.onerror=null; this.src='/img/default.svg'">
                         <div class="flex-grow-1 min-width-0">
                             <h3 class="h6 mb-1"><?= e($request['username']) ?></h3>
                             <p class="text-muted small mb-2">
@@ -79,7 +79,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                             <img src="<?= avatarUrl($friend['avatar'] ?? 'default.png') ?>"
                                  class="avatar rounded-circle flex-shrink-0"
                                  width="48" height="48" alt="<?= e($friend['username']) ?>"
-                                 onerror="this.src='<?= url('img/default.svg') ?>'">
+                                 onerror="this.onerror=null; this.src='/img/default.svg'">
                             <div class="min-width-0">
                                 <a href="<?= url('profile/' . (int)$friend['id']) ?>"
                                    class="fw-semibold text-decoration-none">
@@ -123,7 +123,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                         <img src="<?= avatarUrl($sent['avatar'] ?? 'default.png') ?>"
                              class="rounded-circle flex-shrink-0"
                              width="36" height="36" alt=""
-                             onerror="this.src='<?= url('img/default.svg') ?>'">
+                             onerror="this.onerror=null; this.src='/img/default.svg'">
                         <span class="flex-grow-1 text-truncate"><?= e($sent['username']) ?></span>
                         <span class="badge bg-warning text-dark">Pendiente</span>
                     </li>
@@ -148,7 +148,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                             <img src="<?= avatarUrl($user['avatar'] ?? 'default.png') ?>"
                                  class="rounded-circle flex-shrink-0"
                                  width="36" height="36" alt=""
-                                 onerror="this.src='<?= url('img/default.svg') ?>'">
+                                 onerror="this.onerror=null; this.src='/img/default.svg'">
                             <span class="flex-grow-1 text-truncate fw-semibold">
                                 <?= e($user['username']) ?>
                             </span>

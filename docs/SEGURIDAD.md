@@ -12,10 +12,11 @@ Este documento recoge las medidas de seguridad de la aplicación y la revisión 
 - `requireLogin()` contrasta la sesión con la base de datos en cada petición: una cuenta desactivada o borrada sale en su siguiente clic y los cambios de rol se aplican al momento.
 - Cierre de sesión por POST con token CSRF: borra datos, cookie y sesión, y envía `Clear-Site-Data: "cache"`.
 - No hay usuarios por defecto: el administrador se crea con `bin/create-admin.php`.
+- Sin registro público: las cuentas las crea un administrador desde el panel.
 
 ### CSRF
 - Token de 256 bits (`random_bytes(32)`) por sesión, en un campo oculto de cada formulario y en `<meta name="csrf-token">` para las peticiones AJAX (cabecera `X-CSRF-TOKEN`).
-- `verifyCsrf()` al principio de **las 32 acciones POST**, con `hash_equals` (comparación en tiempo constante).
+- `verifyCsrf()` al principio de **todas las acciones POST**, con `hash_equals` (comparación en tiempo constante).
 
 ### XSS
 - Toda salida en las vistas pasa por `e()` (`htmlspecialchars` con `ENT_QUOTES | ENT_HTML5`, UTF-8).
@@ -43,7 +44,8 @@ Este documento recoge las medidas de seguridad de la aplicación y la revisión 
 ### Autorización
 - Borrar publicaciones, eventos y publicaciones de grupo: solo el autor o un administrador (del sitio o del grupo). Los `DELETE` del autor incluyen además `AND user_id = ?`.
 - Las publicaciones de un usuario solo las ven él, sus amigos y los administradores; comentar y dar like, igual.
-- Grupos privados: unirse crea una solicitud que aprueba un administrador del grupo; hasta entonces no se ven ni se pueden crear publicaciones.
+- Grupos privados: invisibles para quien no es miembro (no aparecen en la lista y su URL redirige). Se entra solo por invitación de un administrador del grupo, que únicamente puede invitar a sus amigos; la persona invitada acepta o rechaza. `POST /groups/join` rechaza los grupos privados.
+- No se puede dar like ni comentar las publicaciones propias.
 - Un administrador no puede desactivar ni borrar a otro administrador ni a sí mismo.
 - Notificaciones: solo se pueden marcar las propias.
 - Suscripciones push: solo endpoints HTTPS de servicios push conocidos (evita que el servidor haga peticiones a direcciones arbitrarias).
@@ -58,7 +60,7 @@ Este documento recoge las medidas de seguridad de la aplicación y la revisión 
 
 ## Revisión de noviembre de 2026
 
-Revisé el código completo (controladores, modelos, vistas, JavaScript, servidor WebSocket, Docker y SQL) y comprobé cada hallazgo con una instancia local (Apache + PHP 8.3 + MariaDB + Ratchet). Después de los arreglos, una batería de 47 pruebas HTTP y WebSocket y 10 en navegador (Chromium) pasan sin errores.
+Revisé el código completo (controladores, modelos, vistas, JavaScript, servidor WebSocket, Docker y SQL) y comprobé cada hallazgo con una instancia local (Apache + PHP 8.3 + MariaDB + Ratchet). Después de los arreglos, una batería de pruebas HTTP, WebSocket y en navegador (Chromium) pasa sin errores.
 
 ### Graves
 
@@ -74,7 +76,9 @@ Revisé el código completo (controladores, modelos, vistas, JavaScript, servido
 
 | Hallazgo | Arreglo |
 |---|---|
-| Grupos "privados" en los que cualquiera entraba con un clic | Solicitudes con aprobación |
+| Grupos privados: en la sesión 13 se ocultaron de la lista y de la URL, pero un `POST /groups/join` con su id seguía dejando entrar a cualquiera | `join` rechaza los privados; se entra solo por invitación |
+| Registro abierto en una red que debía ser cerrada | Sin registro público; altas desde el panel de administración |
+| `/admin/comments` enlazaba a una vista que no existía (error 500) | Vista creada |
 | Un usuario desactivado seguía dentro hasta que caducaba su sesión; el rol se leía solo de la sesión | `requireLogin()` consulta la BD en cada petición |
 | El Service Worker guardaba todas las páginas (feed, mensajes, administración), que seguían en el navegador tras cerrar sesión | Solo estáticos, `Cache-Control: no-store`, limpieza al cerrar sesión |
 | La suscripción push seguía activa tras cerrar sesión (la siguiente persona del equipo recibía tus notificaciones) | Se borra al cerrar sesión |
@@ -82,13 +86,13 @@ Revisé el código completo (controladores, modelos, vistas, JavaScript, servido
 | `GET /logout`: cualquier web podía cerrar la sesión | POST con CSRF |
 | Comentar, dar like y ver las publicaciones de cualquiera aunque no fuerais amigos | Mismas reglas que el feed |
 | Las redirecciones usaban la cabecera `Host` enviada por el cliente | `APP_URL` fija |
+| La imagen por defecto era un SVG con extensión `.png`: con `nosniff` el navegador no la muestra | Se usa `default.svg` |
 | `mod_headers` no estaba activado: las cabeceras de seguridad del `.htaccess` no se enviaban | Activado en la imagen |
 | Diferencia de tiempo en el login según existiera o no el email | Verificación contra un hash ficticio |
 | Suscripciones push con cualquier URL como endpoint | Solo servicios push conocidos |
 
 ### Errores de funcionamiento corregidos
 
-- **`app.js` no se ejecutaba**: una variable declarada dos veces en la misma función provocaba un error de sintaxis, así que likes, comentarios, confirmaciones de borrado y el envío de mensajes por AJAX no funcionaban.
 - Los mensajes enviados por WebSocket no creaban notificación ni push.
 - Una solicitud de amistad rechazada impedía para siempre volver a enviarla.
 - "Solicitud aceptada" aunque no existiera la solicitud.
@@ -96,6 +100,7 @@ Revisé el código completo (controladores, modelos, vistas, JavaScript, servido
 - Las dependencias de Composer de la imagen quedaban ocultas por el volumen, y el push dejaba de funcionar en un clon limpio.
 - La conexión del servidor WebSocket a MariaDB no se recuperaba tras horas de inactividad.
 - Dos clics simultáneos en "me gusta" podían provocar un error 500.
+- El aviso de publicaciones nuevas del feed (sondeo cada 30 s) mostraba como nuevas publicaciones que ya estaban en pantalla cuando varias tenían la misma fecha.
 - Al borrar usuarios, publicaciones o eventos quedaban imágenes huérfanas en disco.
 - Longitudes medidas en bytes en lugar de caracteres (`strlen` → `mb_strlen`).
 
@@ -104,5 +109,4 @@ Revisé el código completo (controladores, modelos, vistas, JavaScript, servido
 - Límite de intentos de inicio de sesión (fuerza bruta).
 - Content-Security-Policy (requiere sacar los `<script>` en línea de las vistas).
 - Tests automáticos de los helpers de seguridad e integración continua.
-- Registro por invitación o con aprobación, si "privada" debe significar "solo invitados".
 - Despliegue detrás de un proxy con HTTPS (`wss://`, HSTS).

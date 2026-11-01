@@ -45,9 +45,8 @@ require_once VIEWS_PATH . '/layout/header.php';
                 </form>
 
                 <hr class="my-3">
-                <p class="text-center text-muted mb-0">
-                    ¿No tienes cuenta?
-                    <a href="<?= url('register') ?>" class="text-decoration-none fw-semibold">Regístrate</a>
+                <p class="text-center text-muted small mb-0">
+                    Comunidad privada: las cuentas las crea un administrador.
                 </p>
             </div>
         </div>

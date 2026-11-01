@@ -46,6 +46,10 @@ class CommentController
             jsonResponse(['success' => false, 'error' => 'Solo los amigos del autor pueden interactuar con esta publicación.'], 403);
         }
 
+        if ((int)$post['user_id'] === (int)$user['id']) {
+            jsonResponse(['success' => false, 'error' => 'No puedes comentar tu propia publicación.'], 403);
+        }
+
         $this->postModel->addComment($postId, (int)$user['id'], $comment);
 
         if ($ownerId !== (int)$user['id']) {

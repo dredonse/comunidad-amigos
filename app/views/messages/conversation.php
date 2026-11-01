@@ -8,9 +8,14 @@ require_once VIEWS_PATH . '/layout/header.php';
 <div class="row g-4">
     <div class="col-lg-4">
         <div class="card sidebar-card">
-            <div class="card-header bg-white fw-semibold py-2">
-                <a href="<?= url('messages') ?>" class="text-decoration-none small">
-                    <i class="bi bi-arrow-left me-1"></i> Todas
+            <div class="card-header bg-white py-2">
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                    <a href="<?= url('messages') ?>" class="text-decoration-none small">
+                        <i class="bi bi-arrow-left me-1"></i> Todas
+                    </a>
+                </div>
+                <a href="<?= url('messages?new=1') ?>" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-pencil-square me-1"></i> Nuevo mensaje
                 </a>
             </div>
             <div class="card-body p-0" style="max-height:70vh;overflow-y:auto">
@@ -27,7 +32,7 @@ require_once VIEWS_PATH . '/layout/header.php';
             <div class="card-header bg-white d-flex align-items-center gap-3">
                 <img src="<?= avatarUrl($otherUser['avatar'] ?? 'default.png') ?>"
                      class="rounded-circle" width="40" height="40" alt=""
-                     onerror="this.src='<?= url('img/default.svg') ?>'">
+                     onerror="this.onerror=null; this.src='/img/default.svg'">
                 <div>
                     <a href="<?= url('profile/' . (int)$otherUser['id']) ?>"
                        class="fw-semibold text-decoration-none">

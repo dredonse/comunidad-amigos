@@ -16,7 +16,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                         <img src="<?= avatarUrl($profile['avatar'] ?? 'default.png') ?>"
                              class="avatar rounded-circle flex-shrink-0"
                              width="48" height="48" alt="Tu avatar"
-                             onerror="this.src='<?= url('img/default.svg') ?>'">
+                             onerror="this.onerror=null; this.src='/img/default.svg'">
                         <div class="flex-grow-1">
                             <textarea id="postContent" name="content" class="form-control mb-2"
                                       rows="2" placeholder="¿Qué quieres compartir?"
@@ -37,6 +37,7 @@ require_once VIEWS_PATH . '/layout/header.php';
             </div>
         </div>
 
+        <div id="feed-container">
         <?php if (empty($posts)): ?>
         <div class="card text-center py-5">
             <div class="card-body">
@@ -55,6 +56,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                 <?php require VIEWS_PATH . '/posts/_post.php'; ?>
             <?php endforeach; ?>
         <?php endif; ?>
+        </div>
     </div>
 
     <div class="col-lg-4">
@@ -63,7 +65,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                 <img src="<?= avatarUrl($profile['avatar'] ?? 'default.png') ?>"
                      class="avatar rounded-circle mb-2"
                      width="72" height="72" alt="<?= e($profile['username']) ?>"
-                     onerror="this.src='<?= url('img/default.svg') ?>'">
+                     onerror="this.onerror=null; this.src='/img/default.svg'">
                 <h2 class="h6 mb-1"><?= e($profile['username']) ?></h2>
                 <p class="text-muted small mb-3">
                     <?= !empty($profile['bio'])

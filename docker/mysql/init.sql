@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS group_members (
     group_id   INT UNSIGNED NOT NULL,
     user_id    INT UNSIGNED NOT NULL,
     role       ENUM('admin','member') DEFAULT 'member',
-    status     ENUM('approved','pending') NOT NULL DEFAULT 'approved',  -- 'pending': solicitud a un grupo privado
+    status     ENUM('approved','invited') NOT NULL DEFAULT 'approved',  -- 'invited': invitación a un grupo privado sin aceptar
     joined_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (group_id) REFERENCES `groups`(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id)  REFERENCES users(id)  ON DELETE CASCADE,

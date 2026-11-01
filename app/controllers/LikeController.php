@@ -41,6 +41,10 @@ class LikeController
             jsonResponse(['success' => false, 'error' => 'Solo los amigos del autor pueden interactuar con esta publicación.'], 403);
         }
 
+        if ((int)$post['user_id'] === (int)$user['id']) {
+            jsonResponse(['success' => false, 'error' => 'No puedes dar like a tu propia publicación.'], 403);
+        }
+
         $result = $this->postModel->toggleLike($postId, (int)$user['id']);
 
         if ($result['liked']) {

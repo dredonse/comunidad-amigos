@@ -1,7 +1,7 @@
 # Diario de desarrollo
 
 > Registro de las sesiones de trabajo con las que se construyó la aplicación, tal como se
-> escribió durante el desarrollo (mayo de 2026). El código ha cambiado después, sobre todo en la
+> escribió durante el desarrollo (mayo y junio de 2026). El código ha cambiado después, sobre todo en la
 > revisión de seguridad de noviembre de 2026: ver [SEGURIDAD.md](SEGURIDAD.md). Donde este
 > diario y el código no coincidan, manda el código.
 >
@@ -582,4 +582,135 @@ app/public/js/chat.js
 app/views/messages/conversation.php  (modificado: vars JS)
 app/public/js/app.js           (modificado: fallback WS)
 app/public/css/app.css         (modificado: spinner)
+```
+
+### Sesión 13 — Mejoras y correcciones generales
+
+**Estado:** ✅ Completado
+
+**Objetivos:**
+Pulir el comportamiento de la app, mejorar el panel de 
+administración y corregir bugs detectados en pruebas.
+
+**Trabajo realizado:**
+
+**Panel de administración**
+- Dashboard rediseñado: 5 tarjetas sin redundancias
+  (Usuarios, Publicaciones, Eventos, Mensajes, Grupos).
+  Cada tarjeta con dato principal y dato secundario.
+  Tarjetas clicables excepto Mensajes (privacidad).
+- Nuevas secciones de gestión: /admin/posts, 
+  /admin/events, /admin/groups con paginación y 
+  acciones de eliminar.
+- Grupos: botón toggle público/privado desde el admin.
+- Crear usuario desde /admin/users con modal Bootstrap.
+  Solo el admin puede crear cuentas (red privada).
+- Mensajes: solo contador, sin acceso al contenido.
+
+**Correcciones de bugs**
+- Grupos privados visibles para usuarios no miembros.
+  Corregido en GroupModel::getAll() con subquery EXISTS.
+  Acceso directo por URL también bloqueado en 
+  GroupController::show().
+- Like y comentario en posts propios: deshabilitado en
+  UI (_post.php) y validado en backend (LikeController,
+  CommentController).
+- Bucle infinito de avatar 404: corregido con 
+  this.onerror=null en todos los tags img.
+- CSRF token no disponible para AJAX: corregido con
+  meta tag csrf-token en el header.
+- app.js: const form duplicado causaba SyntaxError.
+  Corregido renombrando variables a groupForm, postForm,
+  msgForm. Error persistía por caché del navegador,
+  resuelto con Ctrl+Shift+R.
+
+**Mensajería**
+- Botón "Nuevo mensaje" en /messages con modal para
+  seleccionar amigo y buscador en tiempo real.
+
+**Archivos creados / modificados:**
+```
+app/views/admin/index.php      (rediseño dashboard)
+app/views/admin/posts.php      (nueva vista)
+app/views/admin/events.php     (nueva vista)
+app/views/admin/groups.php     (nueva vista)
+app/views/admin/users.php      (modal crear usuario)
+app/controllers/AdminController.php  (nuevos métodos)
+app/models/AdminModel.php      (nuevos métodos)
+app/public/index.php           (nuevas rutas admin)
+app/models/GroupModel.php      (fix grupos privados)
+app/controllers/GroupController.php  (fix acceso privado)
+app/views/posts/_post.php      (like/comentario propios)
+app/controllers/LikeController.php   (validación backend)
+app/controllers/CommentController.php (validación backend)
+app/views/messages/index.php   (modal nuevo mensaje)
+app/controllers/MessageController.php (carga amigos)
+app/helpers/functions.php      (fix avatarUrl)
+app/views/layout/header.php    (meta csrf-token)
+app/public/js/app.js           (fix const form duplicado)
+```
+
+### Sesión 14 — Polling del feed y mejoras generales
+
+**Estado:** ✅ Completado
+
+**Objetivos:**
+Implementar actualización del feed en tiempo real con 
+polling y revisar el comportamiento general de la app.
+
+**Trabajo realizado:**
+
+**Polling del feed**
+- Nuevo endpoint GET /ajax/feed/new en FeedController.
+- Método getNewPosts(userId, lastId) en PostModel:
+  misma lógica que getFeed() con AND p.id > lastId,
+  ORDER BY id ASC, LIMIT 10.
+- Polling en app.js cada 30 segundos usando IIFE para
+  scope correcto de lastPostId.
+- Al detectar posts nuevos muestra botón azul discreto
+  "Ver X publicaciones nuevas" en vez de insertar 
+  automáticamente para no interrumpir la lectura.
+- Al pulsar el botón se insertan los posts nuevos 
+  arriba del feed con animación fade-in.
+- Solo activo cuando existe #feed-container en la página.
+
+**Decisiones de diseño tomadas**
+- Feed general vs feed de amigos: se mantiene el modelo
+  de feed de amigos (solo ves posts de tus amigos).
+  Para comunidades pequeñas y cerradas valorar cambiar
+  a feed global en el futuro.
+- Posts de grupos separados del feed general: cada grupo
+  tiene su propio espacio, los posts no se mezclan 
+  con el feed personal. Igual que Facebook.
+- Like y comentario en posts propios: deshabilitado 
+  en UI y validado en backend.
+- Polling vs WebSockets vs SSE para el feed: se eligió
+  polling por simplicidad. Para el feed 30 segundos 
+  de retraso es aceptable. WebSockets se reserva para
+  el chat donde sí se necesita instantaneidad.
+
+**Correcciones adicionales**
+- Grupos privados: corregido bug que los mostraba a 
+  usuarios no miembros.
+- Avatar default: corregido bucle infinito de onerror.
+- CSRF token AJAX: corregido con meta tag en header.
+- app.js const form duplicado: corregido con IIFE y 
+  nombres de variables únicos.
+
+**Pendiente para próximas sesiones**
+- Reset de contraseña por email (Gmail SMTP)
+- Icono PWA (icon-192.png no es PNG real)
+- Diseño mobile-first para PWA
+- Despliegue en servidor con HTTPS
+- Ver más comentarios por AJAX
+- Fase 3: Videochat WebRTC, Streaming HLS
+
+**Archivos creados / modificados:**
+```
+app/public/index.php           (modificado: ruta feed/new)
+app/controllers/FeedController.php  (modificado: newPosts)
+app/models/PostModel.php       (modificado: getNewPosts)
+app/public/js/app.js           (modificado: polling IIFE)
+app/views/posts/feed.php       (modificado: #feed-container)
+app/views/posts/_post.php      (modificado: data-post-id)
 ```

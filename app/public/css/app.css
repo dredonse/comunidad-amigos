@@ -145,6 +145,18 @@ body {
 }
 .fade-in { animation: fadeIn .25s ease-out; }
 
+/* ── Admin dashboard ── */
+.admin-stat-link {
+    display: block;
+    cursor: pointer;
+}
+.admin-stat-card {
+    transition: box-shadow .2s ease;
+}
+.admin-stat-link:hover .admin-stat-card {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .12);
+}
+
 /* ── Responsive ── */
 @media (max-width: 576px) {
     .post-card .card-body { padding: .75rem; }

@@ -67,7 +67,7 @@ sequenceDiagram
 
 ## Notificaciones
 
-Cada evento social (solicitud de amistad, aceptación, comentario, like, mensaje, solicitud o alta en un grupo) genera:
+Cada evento social (solicitud de amistad, aceptación, comentario, like, mensaje, invitación o alta en un grupo) genera:
 
 1. Una fila en `notifications`: la campana de la web.
 2. Un push al navegador con `minishlink/web-push` y las claves VAPID, si el usuario lo activó. Las suscripciones caducadas se borran solas, y solo se aceptan suscripciones de servicios push conocidos (Google, Mozilla, Microsoft, Apple).
@@ -84,7 +84,7 @@ Al cerrar sesión, el navegador borra su suscripción push y las cachés del Ser
 14 tablas en `docker/mysql/init.sql` (InnoDB, `utf8mb4`). Lo más relevante:
 
 - **`friends`**: una fila por relación con estado `pending`/`accepted`. Rechazar borra la fila.
-- **`group_members`**: rol (`admin`/`member`) y estado (`approved`/`pending`); en un grupo privado, unirse crea una solicitud pendiente.
+- **`group_members`**: rol (`admin`/`member`) y estado (`approved`/`invited`). Los grupos privados son invisibles para quien no es miembro y se entra por invitación.
 - **Claves únicas** como reglas de negocio: un like por usuario y post, una respuesta por usuario y evento, un miembro por grupo.
 - **`ON DELETE CASCADE`** en todas las claves foráneas. Al borrar un usuario, la aplicación borra también sus imágenes del disco.
 - El esquema de bases de datos existentes se actualiza con los ficheros de `docker/mysql/migrations/`.
@@ -93,5 +93,5 @@ Al cerrar sesión, el navegador borra su suscripción push y las cachés del Ser
 
 | Script | Para qué |
 |---|---|
-| `php bin/create-admin.php` | Crear el primer administrador o ascender un usuario existente. No hay usuarios por defecto |
+| `php bin/create-admin.php` | Crear el primer administrador o ascender un usuario existente. No hay usuarios por defecto ni registro público: las demás cuentas se crean desde el panel |
 | `php bin/generate-vapid.php` | Generar las claves VAPID para las notificaciones push |

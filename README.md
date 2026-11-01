@@ -4,20 +4,20 @@ Red social privada para grupos de amigos, hecha en **PHP 8.3 sin framework**, co
 
 ![Feed](docs/img/feed.png)
 
-| Chat en tiempo real | Grupo privado con solicitudes |
+| Chat en tiempo real | Grupo privado con invitaciones |
 |---|---|
 | ![Chat](docs/img/chat.png) | ![Grupo privado](docs/img/grupo-privado.png) |
 
 ## Funcionalidades
 
-- **Cuentas**: registro, inicio de sesión, perfil con avatar y biografía, cambio de contraseña.
-- **Feed** con tus publicaciones y las de tus amigos, imágenes, likes y comentarios sin recargar.
+- **Cuentas**: red cerrada, sin registro público: las cuentas las crea un administrador. Perfil con avatar y biografía, cambio de contraseña.
+- **Feed** con tus publicaciones y las de tus amigos, imágenes, likes y comentarios sin recargar, y aviso de publicaciones nuevas cada 30 segundos.
 - **Amistades**: solicitudes, aceptar, rechazar y sugerencias.
 - **Eventos** con asistencia (voy, quizás, no voy) y **mapa**: se elige el sitio con un clic y la dirección se rellena sola.
-- **Grupos** públicos y privados, con roles, publicaciones, comentarios y **aprobación de solicitudes**.
+- **Grupos** públicos y privados, con roles, publicaciones y comentarios. Los privados son invisibles para quien no es miembro y se entra **por invitación**.
 - **Mensajería privada en tiempo real** (WebSocket) con alternativa por AJAX si el WebSocket no está disponible.
 - **Notificaciones** en la web y **push** en el navegador, aunque la pestaña esté cerrada.
-- **Panel de administración**: estadísticas, activar, desactivar y borrar usuarios, moderar publicaciones.
+- **Panel de administración**: estadísticas, alta de usuarios, activar, desactivar y borrar cuentas, y moderación de publicaciones, comentarios, eventos y grupos.
 
 ## Stack
 
@@ -73,7 +73,7 @@ docker compose up -d --build
 docker compose exec web php bin/create-admin.php
 ```
 
-Abre <http://localhost:8080>.
+Abre <http://localhost:8080> y entra con ese email. No hay registro público: el resto de cuentas se crean desde *Administración → Usuarios*.
 
 **Notificaciones push (opcional):** genera las claves, cópialas en `.env` y reinicia.
 
@@ -94,13 +94,13 @@ docker compose up -d
 |---|---|
 | Inyección SQL | PDO con consultas preparadas en todas las consultas y `ATTR_EMULATE_PREPARES = false` |
 | XSS | Escapado de toda salida (`htmlspecialchars` con `ENT_QUOTES`), `json_encode` con `JSON_HEX_*` hacia JavaScript, `textContent` en el chat y en los mapas |
-| CSRF | Token por sesión (`random_bytes`) en los 32 POST, comparado con `hash_equals`; cookie `SameSite=Lax`; cierre de sesión por POST |
+| CSRF | Token por sesión (`random_bytes`) en todos los POST, comparado con `hash_equals`; cookie `SameSite=Lax`; cierre de sesión por POST |
 | Robo o fijación de sesión | Cookie `HttpOnly`, solo por cookie, modo estricto, `session_regenerate_id(true)` al iniciar sesión; `Secure` con HTTPS |
 | Cuentas desactivadas | El estado y el rol se comprueban en la base de datos en cada petición |
 | Contraseñas | bcrypt (coste 12); la contraseña actual es obligatoria para cambiarla; tiempo de respuesta igual exista o no el email |
 | Subida de ficheros | Tipo real por contenido (`finfo`), imagen **re-codificada** con GD (elimina código incrustado y metadatos EXIF/GPS), extensión decidida por el servidor y PHP desactivado en `uploads/` |
 | WebSocket | Token firmado con HMAC-SHA256 y caducidad, comprobación de `Origin`, solo recepción |
-| Autorización | Comprobación de propiedad en cada borrado; publicaciones visibles solo para amigos; grupos privados con aprobación |
+| Autorización | Comprobación de propiedad en cada borrado; publicaciones visibles solo para amigos; grupos privados ocultos y solo por invitación; sin registro público |
 | Configuración | Secretos en `.env`, `display_errors` desactivado, cabeceras de seguridad, SRI en las librerías del CDN, base de datos y phpMyAdmin no expuestos |
 
 En noviembre de 2026 hice una revisión de seguridad del proyecto y encontré, entre otros, dos fallos graves que he corregido: la subida de imágenes permitía **ejecutar código PHP** en el servidor y el servidor WebSocket **aceptaba el identificador de usuario que enviaba el navegador**. El análisis completo, cómo los reproduje y cómo los arreglé están en [docs/SEGURIDAD.md](docs/SEGURIDAD.md).
@@ -136,6 +136,6 @@ docs/               # Arquitectura, seguridad y diario de desarrollo
 - No hay límite de intentos de inicio de sesión ni Content-Security-Policy.
 - El envío de push es síncrono; con más carga iría a una cola.
 - Consultas N+1 al cargar comentarios y migraciones de base de datos escritas a mano.
-- El registro es abierto: "privada" significa que hace falta cuenta, no invitación.
+- Pendiente: recuperación de contraseña por email y diseño pensado primero para móvil.
 
 El historial de desarrollo por sesiones está en [docs/DIARIO.md](docs/DIARIO.md).

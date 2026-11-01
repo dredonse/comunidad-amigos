@@ -13,8 +13,23 @@ class GroupModel
 
     // ── Grupos ──────────────────────────────────────────────────
 
-    public function getAll(int $userId, int $limit = 9, int $offset = 0): array
-    {
+    public function getAll(
+        int $userId,
+        int $limit = 9,
+        int $offset = 0,
+        bool $isSiteAdmin = false
+    ): array {
+        $visibilityWhere = $isSiteAdmin
+            ? ''
+            : 'WHERE g.privacy = \'public\'
+                  OR (
+                      g.privacy = \'private\'
+                      AND EXISTS (
+                          SELECT 1 FROM group_members gm
+                          WHERE gm.group_id = g.id AND gm.user_id = ?
+                      )
+                  )';
+
         $sql = 'SELECT g.id, g.name, g.description, g.avatar, g.creator_id,
                        g.privacy, g.created_at,
                        u.username AS creator_username,
@@ -23,27 +38,54 @@ class GroupModel
                        EXISTS(
                            SELECT 1 FROM group_members gm
                            WHERE gm.group_id = g.id AND gm.user_id = ? AND gm.status = \'approved\'
-                       ) AS is_member
+                       ) AS is_member,
+                       EXISTS(
+                           SELECT 1 FROM group_members gm
+                           WHERE gm.group_id = g.id AND gm.user_id = ? AND gm.status = \'invited\'
+                       ) AS is_invited
                 FROM `groups` g
                 INNER JOIN users u ON u.id = g.creator_id
+                ' . $visibilityWhere . '
                 ORDER BY g.created_at DESC
                 LIMIT ? OFFSET ?';
 
+        $params = $isSiteAdmin
+            ? [$userId, $userId, $limit, $offset]
+            : [$userId, $userId, $userId, $limit, $offset];
+
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId, $limit, $offset]);
+        $stmt->execute($params);
 
         $rows = $stmt->fetchAll();
         foreach ($rows as &$row) {
             $row['member_count'] = (int)$row['member_count'];
             $row['is_member']    = (bool)$row['is_member'];
+            $row['is_invited']   = (bool)$row['is_invited'];
         }
 
         return $rows;
     }
 
-    public function countAll(): int
+    public function countAll(int $userId, bool $isSiteAdmin = false): int
     {
-        return (int)$this->db->query('SELECT COUNT(*) FROM `groups`')->fetchColumn();
+        if ($isSiteAdmin) {
+            return (int)$this->db->query('SELECT COUNT(*) FROM `groups`')->fetchColumn();
+        }
+
+        $stmt = $this->db->prepare(
+            'SELECT COUNT(*) FROM `groups` g
+             WHERE g.privacy = \'public\'
+                OR (
+                    g.privacy = \'private\'
+                    AND EXISTS (
+                        SELECT 1 FROM group_members gm
+                        WHERE gm.group_id = g.id AND gm.user_id = ?
+                    )
+                )'
+        );
+        $stmt->execute([$userId]);
+
+        return (int)$stmt->fetchColumn();
     }
 
     public function findById(int $id): ?array
@@ -151,11 +193,11 @@ class GroupModel
         return (bool)$stmt->fetch();
     }
 
-    public function isPending(int $groupId, int $userId): bool
+    public function isInvited(int $groupId, int $userId): bool
     {
         $stmt = $this->db->prepare(
             'SELECT id FROM group_members
-             WHERE group_id = ? AND user_id = ? AND status = \'pending\' LIMIT 1'
+             WHERE group_id = ? AND user_id = ? AND status = \'invited\' LIMIT 1'
         );
         $stmt->execute([$groupId, $userId]);
 
@@ -184,27 +226,57 @@ class GroupModel
         return (int)$stmt->fetchColumn();
     }
 
-    /**
-     * Grupo público: entra directamente. Grupo privado: queda como solicitud pendiente
-     * que debe aprobar un administrador del grupo.
-     */
-    public function join(int $groupId, int $userId, bool $needsApproval): bool
+    /** Solo para grupos públicos: entra directamente (los privados son por invitación). */
+    public function join(int $groupId, int $userId): bool
     {
         $stmt = $this->db->prepare(
-            'INSERT IGNORE INTO group_members (group_id, user_id, role, status) VALUES (?, ?, \'member\', ?)'
+            'INSERT IGNORE INTO group_members (group_id, user_id, role, status) VALUES (?, ?, \'member\', \'approved\')'
         );
-        $stmt->execute([$groupId, $userId, $needsApproval ? 'pending' : 'approved']);
+        $stmt->execute([$groupId, $userId]);
 
         return $stmt->rowCount() > 0;
     }
 
-    public function getPendingRequests(int $groupId): array
+    /** Invitación a un grupo privado: queda pendiente hasta que la persona la acepte. */
+    public function invite(int $groupId, int $userId): bool
     {
         $stmt = $this->db->prepare(
-            'SELECT gm.user_id, gm.joined_at AS requested_at, u.username, u.avatar
+            'INSERT IGNORE INTO group_members (group_id, user_id, role, status) VALUES (?, ?, \'member\', \'invited\')'
+        );
+        $stmt->execute([$groupId, $userId]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    public function acceptInvite(int $groupId, int $userId): bool
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE group_members SET status = \'approved\', joined_at = CURRENT_TIMESTAMP
+             WHERE group_id = ? AND user_id = ? AND status = \'invited\''
+        );
+        $stmt->execute([$groupId, $userId]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    /** Rechazar (la persona invitada) o cancelar (un admin del grupo) una invitación. */
+    public function removeInvite(int $groupId, int $userId): bool
+    {
+        $stmt = $this->db->prepare(
+            'DELETE FROM group_members WHERE group_id = ? AND user_id = ? AND status = \'invited\''
+        );
+        $stmt->execute([$groupId, $userId]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    public function getInvited(int $groupId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT gm.user_id, gm.joined_at AS invited_at, u.username, u.avatar
              FROM group_members gm
              INNER JOIN users u ON u.id = gm.user_id
-             WHERE gm.group_id = ? AND gm.status = \'pending\'
+             WHERE gm.group_id = ? AND gm.status = \'invited\'
              ORDER BY gm.joined_at ASC'
         );
         $stmt->execute([$groupId]);
@@ -212,25 +284,24 @@ class GroupModel
         return $stmt->fetchAll();
     }
 
-    public function approve(int $groupId, int $userId): bool
+    /** Amigos de $userId que todavía no están en el grupo ni invitados. */
+    public function getInvitableFriends(int $groupId, int $userId): array
     {
         $stmt = $this->db->prepare(
-            'UPDATE group_members SET status = \'approved\', joined_at = CURRENT_TIMESTAMP
-             WHERE group_id = ? AND user_id = ? AND status = \'pending\''
+            'SELECT u.id, u.username, u.avatar
+             FROM friends f
+             INNER JOIN users u ON u.id = CASE WHEN f.sender_id = ? THEN f.receiver_id ELSE f.sender_id END
+             WHERE f.status = \'accepted\'
+               AND (f.sender_id = ? OR f.receiver_id = ?)
+               AND u.active = 1
+               AND NOT EXISTS (
+                   SELECT 1 FROM group_members gm WHERE gm.group_id = ? AND gm.user_id = u.id
+               )
+             ORDER BY u.username ASC'
         );
-        $stmt->execute([$groupId, $userId]);
+        $stmt->execute([$userId, $userId, $userId, $groupId]);
 
-        return $stmt->rowCount() > 0;
-    }
-
-    public function rejectRequest(int $groupId, int $userId): bool
-    {
-        $stmt = $this->db->prepare(
-            'DELETE FROM group_members WHERE group_id = ? AND user_id = ? AND status = \'pending\''
-        );
-        $stmt->execute([$groupId, $userId]);
-
-        return $stmt->rowCount() > 0;
+        return $stmt->fetchAll();
     }
 
     /** @return int[] */

@@ -5,9 +5,13 @@
 
 SET NAMES utf8mb4;
 
--- Grupos privados: unirse crea una solicitud que aprueba un administrador del grupo
+-- Grupos privados: solo por invitación ('invited' hasta que la persona acepta)
 ALTER TABLE group_members
-    ADD COLUMN IF NOT EXISTS status ENUM('approved','pending') NOT NULL DEFAULT 'approved' AFTER role;
+    ADD COLUMN IF NOT EXISTS status ENUM('approved','invited') NOT NULL DEFAULT 'approved' AFTER role;
+-- (una versión previa de esta migración usaba 'pending' para solicitudes: se descartan)
+DELETE FROM group_members WHERE status NOT IN ('approved', 'invited');
+ALTER TABLE group_members
+    MODIFY COLUMN status ENUM('approved','invited') NOT NULL DEFAULT 'approved';
 
 -- Rechazar una solicitud de amistad ahora borra la fila; las antiguas bloqueaban la relación
 DELETE FROM friends WHERE status = 'rejected';

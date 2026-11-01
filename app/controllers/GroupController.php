@@ -16,17 +16,20 @@ class GroupController
 
     public function index(): void
     {
-        $userId = (int)currentUser()['id'];
-        $page   = max(1, (int)($_GET['page'] ?? 1));
-        $perPage = 9;
+        $user     = currentUser();
+        $userId   = (int)$user['id'];
+        $isSiteAdmin = ($user['role'] ?? '') === 'admin';
+        $page     = max(1, (int)($_GET['page'] ?? 1));
+        $perPage  = 9;
 
-        $total = $this->groupModel->countAll();
+        $total = $this->groupModel->countAll($userId, $isSiteAdmin);
         $pag   = paginate($total, $perPage, $page);
 
         $groups = $this->groupModel->getAll(
             $userId,
             $pag['perPage'],
-            $pag['offset']
+            $pag['offset'],
+            $isSiteAdmin
         );
 
         require_once VIEWS_PATH . '/groups/index.php';
@@ -94,11 +97,25 @@ class GroupController
             return;
         }
 
-        $isMember  = $this->groupModel->isMember($id, $userId);
-        $isPending = !$isMember && $this->groupModel->isPending($id, $userId);
-        $isAdmin   = $this->groupModel->isAdmin($id, $userId);
-        $pendingRequests = $isAdmin ? $this->groupModel->getPendingRequests($id) : [];
-        $canViewPosts = $isMember || $group['privacy'] === 'public';
+        $isMember    = $this->groupModel->isMember($id, $userId);
+        $isInvited   = !$isMember && $this->groupModel->isInvited($id, $userId);
+        $isAdmin     = $this->groupModel->isAdmin($id, $userId);
+        $isSiteAdmin = ($user['role'] ?? '') === 'admin';
+
+        // Los grupos privados son invisibles salvo para miembros, invitados y administradores del sitio
+        if ($group['privacy'] === 'private' && !$isMember && !$isInvited && !$isSiteAdmin) {
+            flash('groups', 'Este grupo es privado.', 'warning');
+            redirect('/groups');
+        }
+
+        $canViewPosts = $isMember || $group['privacy'] === 'public' || $isSiteAdmin;
+
+        $invitableFriends = [];
+        $invitedUsers     = [];
+        if ($isAdmin && $group['privacy'] === 'private') {
+            $invitableFriends = $this->groupModel->getInvitableFriends($id, $userId);
+            $invitedUsers     = $this->groupModel->getInvited($id);
+        }
 
         $members = $this->groupModel->getMembers($id, 10);
 
@@ -122,6 +139,7 @@ class GroupController
         require_once VIEWS_PATH . '/groups/show.php';
     }
 
+    /** Solo grupos públicos. A los privados se entra por invitación. */
     public function join(): void
     {
         verifyCsrf();
@@ -131,93 +149,104 @@ class GroupController
         $groupId = (int)($_POST['group_id'] ?? 0);
 
         $group = $this->groupModel->findById($groupId);
-        if (!$group) {
+        // Un grupo privado responde igual que uno inexistente: no se revela que existe
+        if (!$group || $group['privacy'] === 'private') {
             flash('groups', 'Grupo no encontrado.', 'danger');
             redirect('/groups');
         }
 
-        $isPrivate = $group['privacy'] === 'private';
-
-        // INSERT IGNORE + clave única: si ya eres miembro o ya lo solicitaste, no hace nada
-        if (!$this->groupModel->join($groupId, $userId, $isPrivate)) {
-            flash('groups', 'Ya eres miembro o tienes una solicitud pendiente.', 'warning');
+        if (!$this->groupModel->join($groupId, $userId)) {
+            flash('groups', 'Ya eres miembro de este grupo.', 'warning');
             redirect('/groups/' . $groupId);
         }
 
         $adminIds = array_values(array_diff($this->groupModel->getAdminIds($groupId), [$userId]));
-        $text = $isPrivate
-            ? $user['username'] . ' quiere unirse al grupo «' . $group['name'] . '»'
-            : $user['username'] . ' se unió al grupo «' . $group['name'] . '»';
-
+        $text = $user['username'] . ' se unió al grupo «' . $group['name'] . '»';
         foreach ($adminIds as $adminId) {
             $this->notificationModel->create($adminId, 'group', $text, $groupId);
         }
-        PushHelper::sendNotification(
-            $adminIds,
-            $isPrivate ? 'Solicitud para unirse al grupo' : 'Nuevo miembro en el grupo',
-            '@' . $text,
-            '/groups/' . $groupId
-        );
+        PushHelper::sendNotification($adminIds, 'Nuevo miembro en el grupo', '@' . $text, '/groups/' . $groupId);
 
-        flash('groups', $isPrivate
-            ? 'Solicitud enviada. Un administrador del grupo debe aprobarla.'
-            : 'Te has unido al grupo.');
+        flash('groups', 'Te has unido al grupo.');
         redirect('/groups/' . $groupId);
     }
 
-    public function approve(): void
+    /** Un administrador de un grupo privado invita a uno de sus amigos. */
+    public function invite(): void
     {
         verifyCsrf();
-        [$groupId, $memberId, $group] = $this->requireGroupAdminAction();
 
-        if ($this->groupModel->approve($groupId, $memberId)) {
-            $this->notificationModel->create(
-                $memberId,
-                'group',
-                'Te han aceptado en el grupo «' . $group['name'] . '»',
-                $groupId
-            );
-            PushHelper::sendNotification(
-                [$memberId],
-                'Solicitud aceptada',
-                'Ya eres miembro del grupo «' . $group['name'] . '»',
-                '/groups/' . $groupId
-            );
-            flash('groups', 'Solicitud aprobada.');
-        } else {
-            flash('groups', 'La solicitud ya no existe.', 'warning');
-        }
-        redirect('/groups/' . $groupId);
-    }
-
-    public function rejectRequest(): void
-    {
-        verifyCsrf();
-        [$groupId, $memberId] = $this->requireGroupAdminAction();
-
-        $this->groupModel->rejectRequest($groupId, $memberId);
-        flash('groups', 'Solicitud rechazada.');
-        redirect('/groups/' . $groupId);
-    }
-
-    /** Solo un administrador del grupo puede aprobar o rechazar solicitudes. */
-    private function requireGroupAdminAction(): array
-    {
-        $userId   = (int)currentUser()['id'];
+        $user     = currentUser();
+        $userId   = (int)$user['id'];
         $groupId  = (int)($_POST['group_id'] ?? 0);
-        $memberId = (int)($_POST['user_id'] ?? 0);
+        $friendId = (int)($_POST['user_id'] ?? 0);
 
         $group = $this->groupModel->findById($groupId);
-        if (!$group || $memberId < 1) {
-            flash('groups', 'Solicitud no válida.', 'danger');
+        if (!$group || !$this->groupModel->isAdmin($groupId, $userId)) {
+            flash('groups', 'Solo los administradores del grupo pueden invitar.', 'danger');
             redirect('/groups');
         }
-        if (!$this->groupModel->isAdmin($groupId, $userId)) {
-            flash('groups', 'Solo los administradores del grupo pueden gestionar solicitudes.', 'danger');
+        if ($group['privacy'] !== 'private') {
+            flash('groups', 'Los grupos públicos no necesitan invitación.', 'warning');
             redirect('/groups/' . $groupId);
         }
 
-        return [$groupId, $memberId, $group];
+        // Solo se puede invitar a amigos propios que aún no estén en el grupo
+        $invitable = array_map('intval', array_column(
+            $this->groupModel->getInvitableFriends($groupId, $userId), 'id'
+        ));
+        if (!in_array($friendId, $invitable, true) || !$this->groupModel->invite($groupId, $friendId)) {
+            flash('groups', 'No se puede invitar a ese usuario.', 'danger');
+            redirect('/groups/' . $groupId);
+        }
+
+        $text = $user['username'] . ' te ha invitado al grupo «' . $group['name'] . '»';
+        $this->notificationModel->create($friendId, 'group', $text, $groupId);
+        PushHelper::sendNotification([$friendId], 'Invitación a un grupo', '@' . $text, '/groups/' . $groupId);
+
+        flash('groups', 'Invitación enviada.');
+        redirect('/groups/' . $groupId);
+    }
+
+    public function acceptInvite(): void
+    {
+        verifyCsrf();
+
+        $userId  = (int)currentUser()['id'];
+        $groupId = (int)($_POST['group_id'] ?? 0);
+
+        if ($this->groupModel->acceptInvite($groupId, $userId)) {
+            flash('groups', '¡Bienvenido al grupo!');
+            redirect('/groups/' . $groupId);
+        }
+
+        flash('groups', 'La invitación ya no existe.', 'warning');
+        redirect('/groups');
+    }
+
+    /** La persona invitada rechaza la invitación, o un admin del grupo la cancela. */
+    public function removeInvite(): void
+    {
+        verifyCsrf();
+
+        $userId   = (int)currentUser()['id'];
+        $groupId  = (int)($_POST['group_id'] ?? 0);
+        $targetId = (int)($_POST['user_id'] ?? $userId);
+
+        $isSelf = $targetId === $userId;
+        if (!$isSelf && !$this->groupModel->isAdmin($groupId, $userId)) {
+            flash('groups', 'No tienes permiso para cancelar esa invitación.', 'danger');
+            redirect('/groups');
+        }
+
+        $this->groupModel->removeInvite($groupId, $targetId);
+
+        if ($isSelf) {
+            flash('groups', 'Invitación rechazada.');
+            redirect('/groups');
+        }
+        flash('groups', 'Invitación cancelada.');
+        redirect('/groups/' . $groupId);
     }
 
     public function leave(): void

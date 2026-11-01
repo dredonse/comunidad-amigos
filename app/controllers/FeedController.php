@@ -103,4 +103,15 @@ class FeedController
         flash('feed', 'Publicación eliminada.');
         redirect('/feed');
     }
+
+    public function newPosts(): void
+    {
+        $user   = currentUser();
+        $userId = (int)$user['id'];
+        $lastId = max(0, (int)($_GET['last_id'] ?? 0));
+
+        $posts = $this->postModel->getNewPosts($userId, $lastId);
+
+        jsonResponse(['posts' => $posts]);
+    }
 }

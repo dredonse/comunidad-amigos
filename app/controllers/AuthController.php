@@ -11,61 +11,6 @@ class AuthController
         $this->userModel = new UserModel();
     }
 
-    // ── Registro ──────────────────────────────────────────────
-
-    public function showRegister(): void
-    {
-        if (isLoggedIn()) redirect('/feed');
-        require_once VIEWS_PATH . '/auth/register.php';
-    }
-
-    public function register(): void
-    {
-        if (isLoggedIn()) redirect('/feed');
-        verifyCsrf();
-
-        $username = trim($_POST['username'] ?? '');
-        $email    = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
-        $confirm  = $_POST['password_confirm'] ?? '';
-        $errors   = [];
-
-        // Validaciones
-        if (strlen($username) < 3 || strlen($username) > 50) {
-            $errors[] = 'El nombre de usuario debe tener entre 3 y 50 caracteres.';
-        }
-        if (!preg_match('/^[a-zA-Z0-9_]+$/', $username)) {
-            $errors[] = 'El nombre de usuario solo puede contener letras, números y guiones bajos.';
-        }
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = 'El correo electrónico no es válido.';
-        }
-        if (strlen($password) < 8) {
-            $errors[] = 'La contraseña debe tener al menos 8 caracteres.';
-        }
-        if ($password !== $confirm) {
-            $errors[] = 'Las contraseñas no coinciden.';
-        }
-        if ($this->userModel->emailExists($email)) {
-            $errors[] = 'Este correo electrónico ya está registrado.';
-        }
-        if ($this->userModel->usernameExists($username)) {
-            $errors[] = 'Este nombre de usuario ya está en uso.';
-        }
-
-        if (!empty($errors)) {
-            $_SESSION['form_errors'] = $errors;
-            $_SESSION['form_data']   = compact('username', 'email');
-            redirect('/register');
-        }
-
-        $id = $this->userModel->create($username, $email, $password);
-        $this->createSession($this->userModel->findById($id));
-
-        flash('success', '¡Bienvenido a la comunidad, ' . $username . '!');
-        redirect('/feed');
-    }
-
     // ── Login ──────────────────────────────────────────────────
 
     public function showLogin(): void

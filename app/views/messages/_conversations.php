@@ -22,7 +22,7 @@ $compact = $compact ?? false;
                  class="rounded-circle flex-shrink-0"
                  width="<?= $compact ? 36 : 48 ?>"
                  height="<?= $compact ? 36 : 48 ?>" alt=""
-                 onerror="this.src='<?= url('img/default.svg') ?>'">
+                 onerror="this.onerror=null; this.src='/img/default.svg'">
             <div class="flex-grow-1 min-width-0">
                 <div class="d-flex justify-content-between align-items-center gap-1">
                     <span class="fw-semibold text-truncate"><?= e($conv['username']) ?></span>

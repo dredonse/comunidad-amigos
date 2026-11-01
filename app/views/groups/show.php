@@ -15,7 +15,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                 <div class="d-flex gap-3 flex-wrap">
                     <img src="<?= groupAvatarUrl($group['avatar'] ?? 'default.png') ?>"
                          class="rounded-circle" width="72" height="72" alt=""
-                         onerror="this.src='<?= url('img/default.svg') ?>'">
+                         onerror="this.onerror=null; this.src='/img/default.svg'">
                     <div>
                         <h1 class="h4 mb-1"><?= e($group['name']) ?></h1>
                         <?php if (!empty($group['description'])): ?>
@@ -39,9 +39,9 @@ require_once VIEWS_PATH . '/layout/header.php';
 
         <?php if (!$canViewPosts): ?>
         <div class="alert alert-info">
-            <?= $isPending
-                ? 'Tu solicitud está pendiente. Verás las publicaciones cuando un administrador la apruebe.'
-                : 'Este grupo es privado. Solicita unirte para ver las publicaciones.' ?>
+            <?= $isInvited
+                ? 'Te han invitado a este grupo privado. Acepta la invitación para ver las publicaciones.'
+                : 'Este grupo es privado.' ?>
         </div>
         <?php else: ?>
 
@@ -83,7 +83,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                     <div class="d-flex align-items-start gap-3">
                         <img src="<?= avatarUrl($post['avatar'] ?? 'default.png') ?>"
                              class="avatar rounded-circle" width="48" height="48" alt=""
-                             onerror="this.src='<?= url('img/default.svg') ?>'">
+                             onerror="this.onerror=null; this.src='/img/default.svg'">
                         <div class="flex-grow-1 min-width-0">
                             <div class="d-flex justify-content-between">
                                 <div>
@@ -180,19 +180,31 @@ require_once VIEWS_PATH . '/layout/header.php';
     <div class="col-lg-4">
         <div class="card sidebar-card">
             <div class="card-body d-grid gap-2">
-                <?php if ($isPending): ?>
-                <button type="button" class="btn btn-outline-secondary w-100" disabled>
-                    <i class="bi bi-hourglass-split me-1"></i> Solicitud pendiente
-                </button>
-                <?php elseif (!$isMember): ?>
+                <?php if ($isInvited): ?>
+                <form method="POST" action="<?= url('groups/invite/accept') ?>">
+                    <?= csrfField() ?>
+                    <input type="hidden" name="group_id" value="<?= $groupId ?>">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-check-lg me-1"></i> Aceptar invitación
+                    </button>
+                </form>
+                <form method="POST" action="<?= url('groups/invite/remove') ?>">
+                    <?= csrfField() ?>
+                    <input type="hidden" name="group_id" value="<?= $groupId ?>">
+                    <button type="submit" class="btn btn-outline-secondary w-100">
+                        Rechazar
+                    </button>
+                </form>
+                <?php elseif (!$isMember && $group['privacy'] === 'public'): ?>
                 <form method="POST" action="<?= url('groups/join') ?>">
                     <?= csrfField() ?>
                     <input type="hidden" name="group_id" value="<?= $groupId ?>">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-person-plus me-1"></i>
-                        <?= $group['privacy'] === 'private' ? 'Solicitar unirse' : 'Unirse al grupo' ?>
+                        <i class="bi bi-person-plus me-1"></i> Unirse al grupo
                     </button>
                 </form>
+                <?php elseif (!$isMember): ?>
+                <p class="text-muted small mb-0 text-center">Grupo privado: solo por invitación.</p>
                 <?php else: ?>
                     <?php if ($canLeave): ?>
                     <form method="POST" action="<?= url('groups/leave') ?>">
@@ -212,40 +224,48 @@ require_once VIEWS_PATH . '/layout/header.php';
             </div>
         </div>
 
-        <?php if ($isAdmin && !empty($pendingRequests)): ?>
+        <?php if ($isAdmin && $group['privacy'] === 'private'): ?>
         <div class="card sidebar-card mt-3">
             <div class="card-header bg-white fw-semibold">
-                Solicitudes pendientes (<?= count($pendingRequests) ?>)
+                <i class="bi bi-envelope-plus me-1"></i> Invitar amigos
             </div>
+            <div class="card-body">
+                <?php if (empty($invitableFriends)): ?>
+                <p class="text-muted small mb-0">No tienes amigos pendientes de invitar.</p>
+                <?php else: ?>
+                <form method="POST" action="<?= url('groups/invite') ?>" class="d-flex gap-2">
+                    <?= csrfField() ?>
+                    <input type="hidden" name="group_id" value="<?= $groupId ?>">
+                    <select name="user_id" class="form-select form-select-sm" required aria-label="Amigo a invitar">
+                        <?php foreach ($invitableFriends as $f): ?>
+                        <option value="<?= (int)$f['id'] ?>"><?= e($f['username']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="submit" class="btn btn-primary btn-sm flex-shrink-0">Invitar</button>
+                </form>
+                <?php endif; ?>
+            </div>
+            <?php if (!empty($invitedUsers)): ?>
             <ul class="list-group list-group-flush">
-                <?php foreach ($pendingRequests as $req): ?>
+                <?php foreach ($invitedUsers as $inv): ?>
                 <li class="list-group-item d-flex align-items-center gap-2">
-                    <img src="<?= avatarUrl($req['avatar'] ?? null) ?>"
+                    <img src="<?= avatarUrl($inv['avatar'] ?? null) ?>"
                          class="rounded-circle" width="32" height="32" alt=""
-                         onerror="this.src='<?= url('img/default.svg') ?>'">
-                    <a href="<?= url('profile/' . (int)$req['user_id']) ?>"
-                       class="text-decoration-none flex-grow-1">
-                        <?= e($req['username']) ?>
-                    </a>
-                    <form method="POST" action="<?= url('groups/approve') ?>" class="m-0">
+                         onerror="this.onerror=null; this.src='/img/default.svg'">
+                    <span class="flex-grow-1"><?= e($inv['username']) ?></span>
+                    <span class="badge bg-warning text-dark">Invitado</span>
+                    <form method="POST" action="<?= url('groups/invite/remove') ?>" class="m-0">
                         <?= csrfField() ?>
                         <input type="hidden" name="group_id" value="<?= $groupId ?>">
-                        <input type="hidden" name="user_id" value="<?= (int)$req['user_id'] ?>">
-                        <button type="submit" class="btn btn-sm btn-success" title="Aprobar">
-                            <i class="bi bi-check-lg"></i>
-                        </button>
-                    </form>
-                    <form method="POST" action="<?= url('groups/reject') ?>" class="m-0">
-                        <?= csrfField() ?>
-                        <input type="hidden" name="group_id" value="<?= $groupId ?>">
-                        <input type="hidden" name="user_id" value="<?= (int)$req['user_id'] ?>">
-                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Rechazar">
+                        <input type="hidden" name="user_id" value="<?= (int)$inv['user_id'] ?>">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancelar invitación">
                             <i class="bi bi-x-lg"></i>
                         </button>
                     </form>
                 </li>
                 <?php endforeach; ?>
             </ul>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
 
@@ -256,7 +276,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                 <li class="list-group-item d-flex align-items-center gap-2">
                     <img src="<?= avatarUrl($m['avatar'] ?? 'default.png') ?>"
                          class="rounded-circle" width="32" height="32" alt=""
-                         onerror="this.src='<?= url('img/default.svg') ?>'">
+                         onerror="this.onerror=null; this.src='/img/default.svg'">
                     <a href="<?= url('profile/' . (int)$m['user_id']) ?>"
                        class="text-decoration-none flex-grow-1">
                         <?= e($m['username']) ?>

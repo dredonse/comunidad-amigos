@@ -34,7 +34,7 @@ require_once VIEWS_PATH . '/layout/header.php';
                 <div class="d-flex gap-3 mb-2">
                     <img src="<?= groupAvatarUrl($g['avatar'] ?? 'default.png') ?>"
                          class="rounded-circle flex-shrink-0" width="56" height="56" alt=""
-                         onerror="this.src='<?= url('img/default.svg') ?>'">
+                         onerror="this.onerror=null; this.src='/img/default.svg'">
                     <div class="min-width-0">
                         <h2 class="h6 mb-1">
                             <a href="<?= url('groups/' . (int)$g['id']) ?>"
@@ -56,6 +56,8 @@ require_once VIEWS_PATH . '/layout/header.php';
                     </span>
                     <?php if ($g['is_member']): ?>
                     <span class="badge bg-success">Miembro</span>
+                    <?php elseif ($g['is_invited']): ?>
+                    <span class="badge bg-warning text-dark">Te han invitado</span>
                     <?php endif; ?>
                 </div>
             </div>

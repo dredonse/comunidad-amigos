@@ -47,13 +47,19 @@ class UserModel
 
     // ── Registro ──────────────────────────────────────────────
 
-    public function create(string $username, string $email, string $password): int
-    {
+    public function create(
+        string $username,
+        string $email,
+        string $password,
+        string $role = 'user'
+    ): int {
+        $role = $role === 'admin' ? 'admin' : 'user';
         $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
         $stmt = $this->db->prepare(
-            'INSERT INTO users (username, email, password) VALUES (?, ?, ?)'
+            'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)'
         );
-        $stmt->execute([trim($username), strtolower(trim($email)), $hash]);
+        $stmt->execute([trim($username), strtolower(trim($email)), $hash, $role]);
+
         return (int)$this->db->lastInsertId();
     }
 
